@@ -25,10 +25,17 @@ jobs:
           if ("${{ matrix.install }}" -eq "installer") {
             Invoke-WebRequest https://github.com/Vencord/Vesktop/releases/download/v1.6.8/Vesktop-Setup-1.6.8.exe -OutFile "$env:RUNNER_TEMP\setup.exe"
             Start-Process -Wait "$env:RUNNER_TEMP\setup.exe" -ArgumentList "/S"
+            # Per user or for all users, depending on the installer's defaults; it may still be unpacking.
+            $exe = $null
+            for ($i = 0; $i -lt 90 -and -not $exe; $i++) {
+              Start-Sleep 2
+              $exe = (Get-ChildItem "$env:LOCALAPPDATA\Programs", "$env:ProgramFiles" -Recurse -Depth 2 -Filter Vesktop.exe -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+            }
+            if (-not $exe) { throw "the Vesktop installer put Vesktop.exe nowhere expected" }
             Start-Sleep 5
             Get-Process Vesktop -ErrorAction SilentlyContinue | Stop-Process -Force
             Start-Sleep 2
-            $exe = (Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter Vesktop.exe | Select-Object -First 1).FullName
+            if (-not (Test-Path (Join-Path (Split-Path $exe) "Uninstall Vesktop.exe"))) { throw "installed Vesktop has no uninstaller: it would act as portable" }
             $data = "$env:APPDATA\vesktop"
           } else {
             Invoke-WebRequest https://github.com/Vencord/Vesktop/releases/download/v1.6.8/Vesktop-1.6.8-win.zip -OutFile "$env:RUNNER_TEMP\vesktop.zip"
