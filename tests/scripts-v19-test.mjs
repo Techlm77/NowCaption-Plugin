@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { cmdCommandLine, findVesktopInstalls, hasCompiledPlugin, nativeVesktopDataDir, removeOldModels, setVencordDir, vesktopRunning } from "../scripts/common.mjs";
@@ -30,7 +30,8 @@ assert.equal(nativeVesktopDataDir({ platform: "linux", environment: {}, home }),
 assert.equal(nativeVesktopDataDir({ platform: "linux", environment: { XDG_CONFIG_HOME: "/cfg" }, home }), join("/cfg", "vesktop"));
 assert.equal(nativeVesktopDataDir({ platform: "darwin", environment: {}, home }), join(home, "Library", "Application Support", "vesktop"));
 assert.equal(nativeVesktopDataDir({ platform: "win32", environment: { APPDATA: "C:\\Roaming" }, home }), join("C:\\Roaming", "vesktop"));
-assert.equal(nativeVesktopDataDir({ platform: "linux", environment: { VENCORD_USER_DATA_DIR: "/portable/data" }, home }), "/portable/data");
+// A folder given in the environment is made absolute for this computer (on Windows /portable/data is on the current drive).
+assert.equal(nativeVesktopDataDir({ platform: "linux", environment: { VENCORD_USER_DATA_DIR: "/portable/data" }, home }), resolve("/portable/data"));
 
 // Detection: native by default, Flatpak when installed, both when both exist, a custom folder on request.
 let found = findVesktopInstalls({ platform: "darwin", environment: {}, home, flatpak: false });
