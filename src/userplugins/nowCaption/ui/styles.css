@@ -1,0 +1,100 @@
+/* All v10 caption UI is owned by React. Deliberately no animation or transitions. */
+#nowcaption-react-mount {font:12px/1.45 system-ui,sans-serif;color:#f7f9ff;}
+#nowcaption-react-mount *{box-sizing:border-box;animation:none!important;transition:none!important;scroll-behavior:auto!important;}
+#nowcaption-react-mount button,#nowcaption-react-mount select,#nowcaption-react-mount input{font:inherit;}
+#nowcaption-react-mount button{cursor:pointer;}
+#nowcaption-react-mount button:focus-visible,#nowcaption-react-mount input:focus-visible,#nowcaption-react-mount select:focus-visible{outline:2px solid #a5b4fc;outline-offset:2px;}
+/* Compact, stepped speaker card. The tab spans only the activity indicator
+ * and speaker name; the subtitle surface extends the full available width.
+ * The 1px overlap hides the surface border underneath the tab, producing
+ * one uninterrupted outline without SVG masking or clipping the captions. */
+.nc10-card{position:fixed;z-index:2147483644;min-width:205px;min-height:61px;max-width:calc(100vw - 12px);max-height:calc(100vh - 12px);resize:none;overflow:visible;display:flex;flex-direction:column;background:transparent;border:none;border-radius:0;color:#f6f7fb;isolation:isolate;}
+.nc10-card-header{position:absolute;top:0;left:0;z-index:3;height:22px;min-height:22px;width:max-content;max-width:min(300px, calc(100% - 54px));display:flex;align-items:center;gap:6px;padding:0 8px 0 9px;border:1px solid #354054;border-bottom:0;border-radius:8px 8px 0 0;background:#1c2430;touch-action:none;user-select:none;cursor:grab;}
+.nc10-card-header:active{cursor:grabbing;}
+.nc14-card-surface{position:absolute;top:21px;right:0;bottom:0;left:0;z-index:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;background:#131923f5;border:1px solid #354054;border-radius:0 9px 9px 9px;box-shadow:0 6px 22px #0007;}
+.nc14-voice-activity{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:2px;width:12px;height:13px;}
+.nc14-voice-activity i{display:block;background:currentColor;width:2px;border-radius:2px;}
+.nc14-voice-activity i:nth-child(1){height:5px;}
+.nc14-voice-activity i:nth-child(2){height:10px;}
+.nc14-voice-activity i:nth-child(3){height:7px;}
+.nc10-card-name{min-width:0;max-width:220px;flex:0 1 auto;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f6f7fb;padding:0;font:600 11px/1.2 system-ui,sans-serif!important;pointer-events:none;}
+/* Controls only appear during interaction. They sit alongside the tab, not
+ * above the transcript; keyboard focus and touch still make them usable. */
+.nc14-card-actions{position:absolute;left:100%;top:-1px;height:22px;display:flex;align-items:center;gap:0;padding:0 2px;background:#1c2430;border:1px solid #354054;border-left:0;border-radius:0 6px 6px 0;opacity:0;pointer-events:none;}
+.nc10-card-header:hover .nc14-card-actions,.nc10-card-header:focus-within .nc14-card-actions{opacity:1;pointer-events:auto;}
+.nc10-edit{border:0;background:transparent;color:#a6b5ca;min-width:21px;width:21px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:4px;flex-shrink:0;font:12px/1 system-ui,sans-serif!important;}
+.nc10-edit:hover{background:#394254;color:#fff;}
+.nc10-close{border:0;background:transparent;color:#b9c5d6;min-width:21px;width:21px;height:20px;border-radius:4px;flex-shrink:0;font-size:16px!important;line-height:1;}
+.nc10-close:hover{background:#394254;color:white;}
+@media(hover:none){.nc14-card-actions{opacity:1;pointer-events:auto;}}
+.nc10-text{flex:1;min-height:0;padding:0 12px 3px;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;overflow-wrap:break-word;white-space:normal;line-height:1.55;overscroll-behavior:contain;overflow-anchor:none;}
+.nc10-paragraph{white-space:normal;overflow-wrap:break-word;flex:none;margin-top:auto;}
+.nc10-scroll-hidden{scrollbar-width:none!important;}
+.nc10-scroll-hidden::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}
+.nc10-scroll-thin{scrollbar-width:thin;scrollbar-color:#41516b transparent;}
+.nc10-scroll-thin::-webkit-scrollbar{width:5px;}
+.nc10-scroll-thin::-webkit-scrollbar-thumb{background:#41516b;border-radius:8px;}
+.nc10-dock{position:fixed;z-index:2147483646;top:70px;right:14px;display:flex;flex-direction:column;align-items:flex-end;gap:7px;pointer-events:none;}
+.nc10-dock>*{pointer-events:auto;}
+.nc10-launcher{border:1px solid #51607a;border-radius:18px;background:#202838;color:#f7f9ff;box-shadow:0 4px 14px #0006;padding:7px 12px;font-weight:650!important;}
+.nc10-manager{display:flex;flex-direction:column;gap:10px;width:265px;max-width:calc(100vw - 30px);max-height:calc(100vh - 120px);overflow-y:auto;background:#151c28f8;border:1px solid #39465b;border-radius:12px;padding:12px;box-shadow:0 12px 35px #0009;}
+.nc10-wide{width:390px;}
+.nc10-manager-header{display:flex;justify-content:space-between;align-items:center;}
+.nc10-manager-header strong{font-size:13px;}
+.nc10-manager-header button{font-size:18px!important;color:#bcc9da;background:none;border:0;padding:0 3px;}
+.nc10-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;background:#101724;border-radius:8px;padding:3px;}
+.nc10-tabs button{border:0;border-radius:6px;background:transparent;color:#aab8cc;padding:7px 3px;font-size:11px!important;font-weight:600!important;}
+.nc10-tabs .active{background:#39465a;color:#fff;}
+.nc10-panel{display:flex;flex-direction:column;gap:10px;min-width:0;}
+.nc10-panel input:not([type=checkbox]):not([type=range]):not([type=color]),.nc10-panel select{display:block;width:100%;min-height:30px;background:#101724;border:1px solid #3c4a61;border-radius:6px;color:#f5f7fa;padding:6px;}
+.nc10-field{display:flex;flex-direction:column;gap:5px;color:#b4c0d1;font-size:11px;}
+.nc10-primary{border:0;border-radius:7px;background:#5865f2;color:white;padding:9px;font-weight:650!important;}
+.nc10-secondary,.nc10-actions button{background:#303d50;color:#f6f8ff;border:1px solid #506079;border-radius:7px;padding:9px;font-weight:600!important;}
+.nc10-panel button:disabled{opacity:.55;cursor:not-allowed;}
+.nc10-panel details{font-size:11px;color:#afbdd0;}
+.nc10-panel details summary{cursor:pointer;}
+.nc10-panel details input{margin-top:6px;}
+.nc10-panel small{font-size:10px;color:#a9b9cf;}
+.nc10-slider{display:flex;align-items:center;gap:7px;}
+.nc10-slider input{flex:1;accent-color:#8ea3ff;}
+.nc10-font-preview{font-size:15px;line-height:1.5;padding:9px;background:#101724;border:1px solid #354053;border-radius:7px;}
+.nc10-check{display:flex;gap:8px;align-items:center;font-size:11px;color:#e0e7f0;cursor:pointer;}
+.nc10-check input{accent-color:#8ea3ff;}
+.nc10-actions{display:flex;gap:6px;}
+.nc10-actions button{flex:1;padding:7px;}
+.nc10-metrics,.nc10-events{background:#101724;border-radius:7px;margin:0;padding:9px;color:#cdd8e6;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;font:10px/1.55 ui-monospace,monospace;max-height:200px;}
+.nc10-events{max-height:150px;}
+.nc10-message{margin:0;color:#acbdd1;font-size:11px;min-height:16px;max-height:50px;overflow:hidden;}
+
+/* No transitions: explicit resize handle snaps height to integer caption lines. */
+.nc10-resize-handle{position:absolute;bottom:0;right:0;width:19px;height:19px;border:0;background:transparent;color:#8190a5;cursor:nwse-resize;font-size:11px!important;line-height:19px!important;padding:0;text-align:center;touch-action:none;z-index:2;}
+.nc10-resize-handle:hover,.nc10-resize-handle:focus-visible{color:#fff;background:#394254;}
+.nc10-stop{border:1px solid #a75a6b;border-radius:7px;background:#582b38;color:#fff;padding:9px;font-weight:650!important;}
+.nc10-capture-status{margin:-5px 0 0;text-align:center;color:#b4c0d1;font-size:11px;}
+.nc10-audio-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.nc10-audio-heading strong{font-size:11px;color:#d3def0;}
+.nc10-meter-toggle{border:1px solid #465672;border-radius:6px;background:#253249;color:#e4eaf4;padding:5px 7px;font-size:10px!important;}
+.nc10-audio-list{display:flex;flex-direction:column;gap:4px;max-height:205px;overflow:auto;}
+.nc10-audio-option{display:flex;gap:8px;align-items:center;min-height:33px;width:100%;text-align:left;border:1px solid #354155;border-radius:6px;background:#101724;color:#e8eef7;padding:7px 8px;}
+.nc10-audio-option.selected{background:#293752;border-color:#6b86bd;}
+.nc10-audio-option small{font-size:10px;white-space:nowrap;}
+.nc10-audio-name{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nc10-activity-dot{flex:none;border-radius:50%;width:8px;height:8px;background:#66758b;}
+.nc10-activity-dot.speaking{background:#5ee4a0;box-shadow:0 0 0 1px #3c9072;}
+.nc10-no-audio{font-size:11px;color:#b3bfd0;margin:4px 0;}
+
+/* v15 voice-grid caption surface: no header, no controls, no extra speaking
+   ring; Discord's own green outline and hover username remain untouched. */
+.nc15-tile-caption{position:fixed;z-index:1000;display:flex;flex-direction:column;
+    box-sizing:border-box;min-width:0;min-height:0;max-width:none;max-height:none;
+    pointer-events:none;overflow:hidden;border:0;border-radius:8px;
+    background:#0d111adb;
+    box-shadow:0 2px 12px #0004;color:#f7f9ff;}
+.nc15-tile-caption .nc10-text{padding:4px 9px;align-items:stretch;box-sizing:border-box;
+    flex:1 1 auto;height:100%;min-height:0;min-width:0;max-height:100%;overflow-y:auto;overflow-x:hidden;}
+.nc15-tile-caption .nc10-paragraph{max-width:100%;}
+
+/* Private manual placement fallback: the CTA is discoverable in Speakers. */
+.nc10-tile-picker{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center;}
+.nc10-tile-picker small{flex-basis:100%;opacity:.78;line-height:1.45;}
+.nc15-tile-caption,.nc15-tile-caption *{pointer-events:none!important;}

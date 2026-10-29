@@ -1,0 +1,22 @@
+{
+  "name": "nowcaption-plugin",
+  "version": "0.19.0",
+  "private": true,
+  "description": "NowCaption for Vesktop: offline live captions for Discord calls with NowCaption speech model v4 (Windows, macOS, Linux and Flatpak)",
+  "type": "module",
+  "scripts": {
+    "preflight": "node scripts/update-plugin.mjs --preflight",
+    "install-engine": "node scripts/install-engine.mjs",
+    "update-plugin": "node scripts/update-plugin.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "check:platform": "node tests/platform-paths-test.mjs",
+    "check:audit": "node tests/release-audit-test.mjs",
+    "check:syntax": "node check-syntax.cjs",
+    "test:engine": "node tests/real-engine-smoke.mjs",
+    "test": "node scripts/init-font-assets.mjs && node tests/platform-paths-test.mjs && node tests/runtime-parity.cjs && node tests/release-audit-test.mjs && node tests/rtc-patch-test.mjs && node tests/rtc-lifecycle-v10-test.cjs && node check-syntax.cjs && node tests/react-caption-test.cjs && node tests/accessibility-v13-test.cjs && node tests/compact-ui-v14-test.cjs && node tests/voice-tiles-v15-test.cjs && node tests/tile-geometry-v16-test.cjs && node tests/tile-placement-v17-test.cjs && node tests/tile-stream-v18-test.cjs && node tests/store-access-v16-test.cjs && node tests/polish-v11-test.cjs && node tests/stability-test.cjs && node tests/identity-v8-test.cjs && node tests/lifecycle-v8-test.cjs && node tests/audio-v8-test.cjs && node tests/worker-test.cjs && node tests/limits-v19-test.cjs && node tests/identity-v19-test.cjs && node tests/scripts-v19-test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "@types/node": "^22.15.0"
+  }
+}

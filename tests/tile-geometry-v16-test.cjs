@@ -1,0 +1,32 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs'); const vm=require('node:vm'); const path=require('node:path');
+const ts=require('typescript');
+const source=fs.readFileSync(path.join(__dirname,'../src/userplugins/nowCaption/ui/tileGeometry.ts'),'utf8');
+const js=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+const mod={exports:{}};vm.runInNewContext(js,{module:mod,exports:mod.exports,Math,Number});
+const {tileCaptionRect,TILE_ROWS,TILE_BOTTOM_NAME_RESERVE,TILE_TEXT_PAD_Y}=mod.exports;
+assert.equal(TILE_ROWS,3);
+for(const fontSize of [12,15,20,30]) {
+ const tile={left:100,top:100,width:320,height:270};
+ const r=tileCaptionRect(tile,fontSize,1280,720);
+ assert(r,`should fit 3 rows at ${fontSize}px`);
+ assert.equal(r.height,3*Math.ceil(fontSize*1.55)+TILE_TEXT_PAD_Y);
+ assert(r.left>=tile.left && r.left+r.width<=tile.left+tile.width);
+ assert.equal(r.top,tile.top+8,`caption begins at tile top for ${fontSize}px`);
+ assert(r.top+r.height<=tile.top+tile.height-TILE_BOTTOM_NAME_RESERVE);
+}
+const fractional=tileCaptionRect({left:100.2,top:80.5,width:301.1,height:260.3},15,1280,720);
+assert(fractional && fractional.left+fractional.width<=401.3,'fractional tile coordinates must not overflow even by 1px');
+const tiny=tileCaptionRect({left:0,top:0,width:105,height:105},15,800,600);
+assert.equal(tiny,undefined,'too-small tile falls back instead of clipping');
+const narrow=tileCaptionRect({left:100,top:100,width:114,height:250},15,800,600);
+assert(narrow&&narrow.width<=114,'narrow tile must not be widened to 120px');
+const partial=tileCaptionRect({left:700,top:100,width:300,height:250},15,800,600);
+assert(partial && partial.left+partial.width<=792,'viewport clipping must not overflow');
+const base=path.join(__dirname,'../src/userplugins/nowCaption');
+const card=fs.readFileSync(path.join(base,'ui/components/CaptionCard.ts'),'utf8');
+assert(card.includes('tileCaptionRect(tile, preferences.fontSize, innerWidth, innerHeight)'));
+assert(!card.includes('tile.height*.39'));
+const diag=fs.readFileSync(path.join(base,'ui/diagnosticsPanel.ts'),'utf8');
+assert(diag.includes('voice-tiles-v19'));assert(diag.includes('participantTilesFound'));
+console.log('PASS: v19 top-aligned exactly three text rows and width strictly within participant tile; diagnostics version and attachment stats');

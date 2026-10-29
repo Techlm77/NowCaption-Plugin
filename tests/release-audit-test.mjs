@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import { readFile, readdir } from "node:fs/promises";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+const p=join(dirname(fileURLToPath(import.meta.url)),"..","src","userplugins","nowCaption");
+const native=await readFile(join(p,"native.ts"),"utf8");
+const identity=await readFile(join(p,"audio","voiceIdentity.ts"),"utf8");
+const index=await readFile(join(p,"index.ts"),"utf8");
+assert.match(native,/getRuntimeRoot\(\)/);
+assert.doesNotMatch(native,/join\(homedir\(\),\s*"\.local"/);
+assert.match(identity,/ssrc/);
+assert.match(index,/name:"NowCaption"/);
+assert.match(index,/migratePluginSettings\("NowCaption","NowCaptionDiscord"\)/,"the v18 name's settings carry over");
+// This is intentionally a release BLOCKER until the React migration is complete.
+const ui=await readFile(join(p,"ui","reactUI.ts"),"utf8");
+const cards=await readFile(join(p,"ui","components","CaptionCard.ts"),"utf8");
+assert.match(ui,/createRoot/);
+assert.match(cards,/CaptionViewModel/);
+assert.doesNotMatch(cards,/document\.createElement|innerHTML|appendChild|replaceChildren/);
+const capture=await readFile(join(p,"audio","capture.ts"),"utf8");
+assert.match(capture,/observeScopedConnection/);
+console.log("Readiness audit: React components + scoped RTC entry point present. Mounting, patch matching, and native runtime still require real-client/upstream verification.");

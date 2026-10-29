@@ -1,0 +1,31 @@
+name: Tests
+on:
+  push:
+  pull_request:
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test dependencies (no npm lifecycle scripts)
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run source and mocked worker tests
+        run: npm test
+      - name: Strict TypeScript check (test shims, not Vencord integration)
+        run: npx tsc --project tests/tsconfig.json
+      # The real installer and engine, in a folder whose name has a space (Windows quoting, tar, npm).
+      - name: Install speech model v4 and the engine
+        run: node scripts/install-engine.mjs --target native
+        env:
+          NOWCAPTION_VESKTOP_HOME: ${{ runner.temp }}/Now Caption runtime
+      - name: Transcribe a speech clip with the real engine
+        run: node tests/real-engine-smoke.mjs
+        env:
+          NOWCAPTION_VESKTOP_HOME: ${{ runner.temp }}/Now Caption runtime
