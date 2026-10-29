@@ -95,18 +95,22 @@ const native=load('native.ts',{
     assert.equal(native.reset(null,'A9'),false,'only registered tracks');
     await native.stop();
 
-    // Error messages reach the screen and screenshots: the home folder (and its user name) shows as ~.
-    const missing=load('native.ts',{
+    // Error messages reach the screen and screenshots: the home folder (and its user name) shows as ~,
+    // with Linux/macOS paths and with Windows paths (whose letter case can differ from the home folder's).
+    const withHome=(paths,home,root)=>load('native.ts',{
         'node:fs':{existsSync:()=>false},'node:module':{createRequire:()=>({resolve:()=>{throw Error('no');}})},
-        'node:os':{homedir:()=>'/home/tester'},'node:path':path,'node:perf_hooks':{performance},'node:worker_threads':{Worker:FakeWorker},
+        'node:os':{homedir:()=>home},'node:path':paths,'node:perf_hooks':{performance},'node:worker_threads':{Worker:FakeWorker},
         './core/state':{MAX_CAPTIONED:4,MAX_TRACKS:25},
-        './engine/runtimePaths':{getRuntimeRoot:()=>'/home/tester/.local/share/nowcaption-vesktop',MODEL_DIRECTORY:'model-v4'},
+        './engine/runtimePaths':{getRuntimeRoot:()=>root,MODEL_DIRECTORY:'model-v4'},
         './workerSource':{WORKER_SOURCE:'worker'}
     });
-    const failed=await missing.start();
+    let failed=await withHome(path.posix,'/home/tester','/home/tester/.local/share/nowcaption-vesktop').start();
     assert.equal(failed.ok,false);
-    assert.match(failed.error,/~\/\.local\/share\/nowcaption-vesktop\/models\/model-v4/);
+    assert.match(failed.error,/ in ~\/\.local\/share\/nowcaption-vesktop\/models\/model-v4 /);
     assert.doesNotMatch(failed.error,/tester/,'no user name in the message');
+    failed=await withHome(path.win32,'C:\\Users\\Tester','c:\\users\\tester\\AppData\\Local\\NowCaption-Vesktop').start();
+    assert.match(failed.error,/ in ~\\AppData\\Local\\NowCaption-Vesktop\\models\\model-v4 /);
+    assert.doesNotMatch(failed.error,/tester/i,'no user name in the message (Windows)');
 
     // Worker: four streams at most; a long passage starts a new segment in a pause.
     const src=fs.readFileSync(path.join(base,'workerSource.ts'),'utf8');

@@ -15,8 +15,11 @@ const dist = join(vencord, "dist");
 async function exists(path) { try { await stat(path); return true; } catch { return false; } }
 const mark = ok => ok ? "OK     " : "MISSING";
 // People paste this report into issues: show the home folder (and so the computer's user name) as ~.
+// Case-insensitive, because Windows paths (such as %LOCALAPPDATA%) can differ in case from the home folder.
 const home = homedir();
-const print = text => console.log(home.length > 1 ? String(text).split(home).join("~") : text);
+const homePattern = home.length > 1 ? new RegExp(home.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi") : undefined;
+const hideHome = text => homePattern ? String(text).replace(homePattern, "~") : String(text);
+const print = text => console.log(hideHome(text));
 
 function engineLoads(root) {
     try {
@@ -69,4 +72,4 @@ async function main() {
     }
     print("\nNot checked here: live Discord audio, speaker identification and font rendering (see the diagnostics tab in Vesktop).");
 }
-main().catch(e => { console.error(`Doctor failed: ${e.message}`.split(home).join("~")); process.exitCode = 1; });
+main().catch(e => { console.error(hideHome(`Doctor failed: ${e.message}`)); process.exitCode = 1; });

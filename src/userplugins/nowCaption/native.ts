@@ -16,7 +16,9 @@ import { WORKER_SOURCE } from "./workerSource";
 const ROOT = getRuntimeRoot();
 const HOME = homedir();
 /** Messages reach the screen (and screenshots people share): show ~ instead of the home folder and its user name. */
-const shown = (message: string) => HOME.length > 1 ? message.split(HOME).join("~") : message;
+// Case-insensitive: Windows paths can differ in case (C:\Users\Jo and c:\users\jo are the same folder).
+const HOME_PATTERN = HOME.length > 1 ? new RegExp(HOME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi") : undefined;
+const shown = (message: string) => HOME_PATTERN ? message.replace(HOME_PATTERN, "~") : message;
 const MODEL = join(ROOT, "models", MODEL_DIRECTORY);
 const REQUIRED = ["tokens.txt", "encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx"];
 const BLOCK = 640;
