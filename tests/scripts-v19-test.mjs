@@ -9,10 +9,12 @@ import { fileURLToPath } from "node:url";
 
 import { cmdCommandLine, findVesktopInstalls, hasCompiledPlugin, nativeVesktopDataDir, removeOldModels, setVencordDir, vesktopRunning } from "../scripts/common.mjs";
 
-// npm and pnpm are .cmd scripts on Windows: every argument quoted, nothing cmd.exe would expand.
+// npm and pnpm are .cmd scripts on Windows: every argument quoted, nothing cmd.exe would expand. The program name
+// stays unquoted, or npm.cmd looks for its own files in the current folder (it failed this way on Windows CI).
 assert.equal(cmdCommandLine("npm", ["install", "--prefix", "C:\\Users\\Jo Smith\\AppData\\Local\\NowCaption-Vesktop", "x@1"]),
-    '""npm" "install" "--prefix" "C:\\Users\\Jo Smith\\AppData\\Local\\NowCaption-Vesktop" "x@1""');
-assert.equal(cmdCommandLine("pnpm", ["build", "--dev"]), '""pnpm" "build" "--dev""');
+    '"npm "install" "--prefix" "C:\\Users\\Jo Smith\\AppData\\Local\\NowCaption-Vesktop" "x@1""');
+assert.equal(cmdCommandLine("pnpm", ["build", "--dev"]), '"pnpm "build" "--dev""');
+assert.throws(() => cmdCommandLine("C:\\Program Files\\nodejs\\npm.cmd", []), /start this/);
 assert.throws(() => cmdCommandLine("npm", ["C:\\100%\\x"]), /safely/);
 assert.throws(() => cmdCommandLine("npm", ['a"b']), /safely/);
 

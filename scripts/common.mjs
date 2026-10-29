@@ -33,12 +33,15 @@ export function argValue(args, name) {
 /**
  * cmd.exe command line for npm/pnpm, which are .cmd scripts on Windows (Node won't start those without a shell).
  * Every argument is quoted, so folders with spaces work; characters cmd.exe expands even inside quotes are refused.
+ * The program name is NOT quoted: a batch file started by a quoted bare name gets the current folder as its own
+ * (%~dp0), and npm.cmd then looks for npm-cli.js there instead of next to itself.
  */
 export function cmdCommandLine(program, args) {
-    const parts = [program, ...args].map(String);
+    if (!/^[A-Za-z0-9._-]+$/.test(program)) throw new Error(`Can't start this through cmd.exe: ${program}`);
+    const parts = args.map(String);
     const bad = parts.find(part => /["%\r\n]/.test(part));
     if (bad !== undefined) throw new Error(`Can't pass this safely to cmd.exe: ${bad}`);
-    return `"${parts.map(part => `"${part}"`).join(" ")}"`;
+    return `"${[program, ...parts.map(part => `"${part}"`)].join(" ")}"`;
 }
 
 /** Runs a program with inherited output. `program` is a bare name (npm, pnpm, git, tar) or a full path. */
