@@ -3,8 +3,6 @@ name: Windows end-to-end
 # Run it from the Actions tab (it downloads Vesktop, Vencord and the speech model, so it isn't run on every push).
 on:
   workflow_dispatch:
-  push:
-    branches: [e2e-windows]
 jobs:
   vesktop:
     strategy:
