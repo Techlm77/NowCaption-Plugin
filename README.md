@@ -57,8 +57,10 @@ Windows on Arm isn't supported: the speech engine has no build for it.
    another folder, or to use a Vencord source folder you already have.
 5. Start Vesktop. In **Settings → Vencord → Plugins**, turn on **NowCaption** (restart Vesktop if it asks).
 
-Both scripts find every Vesktop on your computer: the normal one, Flathub's, or both. For a portable Vesktop, add
-`--vesktop-data <its Data folder>` to `update-plugin`.
+Both scripts find every Vesktop on your computer: the normal one, Flathub's, or both, and on Windows also Scoop's.
+For the **portable Vesktop** (the Windows .zip download), tell `update-plugin` where it is:
+`update-plugin.cmd --vesktop-data "<the folder that has Vesktop.exe>"`. If no Vesktop could be set up, `update-plugin`
+ends with **NOT FINISHED** and says what to do.
 
 ### Flathub's Vesktop
 
@@ -95,6 +97,9 @@ when a new speech model is announced. Once an update has succeeded, `update-plug
 Run `node scripts/doctor.mjs`. It changes nothing and reports each Vesktop it finds, where that Vesktop loads
 Vencord from, and whether the model and engine are installed for it and load.
 
+- **NowCaption isn't in Vencord's plugin list**: Vesktop is loading its own Vencord, not the one built with
+  NowCaption. Run `node scripts/doctor.mjs` with Vesktop open: on Windows it shows which `Vesktop.exe` is running and,
+  for a portable one, the exact `update-plugin` command. Quit Vesktop, run that, and start it again.
 - **"Speech model v4 isn't installed"**: run `install-engine` (for Flathub's Vesktop: `install-engine --target flatpak`).
 - **"Vesktop is running"**: quit it from the tray icon too, or wait a few seconds after closing it.
 - **Captions never start in a call**: a Discord update may have moved its voice code. In Vesktop's developer tools

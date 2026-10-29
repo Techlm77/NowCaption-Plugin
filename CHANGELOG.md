@@ -10,6 +10,14 @@
 - Engine error messages show your home folder as `~`, so screenshots of them don't show your user name.
 - Test data uses made-up names and IDs only.
 
+**Windows**
+- The portable Vesktop (.zip) and Scoop's Vesktop are supported: Scoop's is found automatically, and
+  `--vesktop-data` takes the folder that has `Vesktop.exe`. When no Vesktop could be set up, `update-plugin` says
+  NOT FINISHED instead of SUCCESS, and `doctor` shows which `Vesktop.exe` is running.
+- npm and pnpm are started correctly through cmd.exe (the engine install failed on Windows before).
+- A Windows end-to-end workflow installs Vesktop (installer and portable), follows the README and checks the plugin
+  list and real speech over DevTools.
+
 **Recognition**
 - Speech model v4 (models-v4 release, SHA-256 pinned): fewer word errors than v3 and less than half its CPU time.
 - Up to four speakers are captioned at once, enforced in the Speakers panel (with a message and an "x of 4"

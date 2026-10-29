@@ -1,0 +1,70 @@
+name: Windows end-to-end
+# The README's steps on Windows with a real Vesktop (installer and portable .zip), checked over DevTools.
+# Run it from the Actions tab (it downloads Vesktop, Vencord and the speech model, so it isn't run on every push).
+on:
+  workflow_dispatch:
+  push:
+    branches: [e2e-windows]
+jobs:
+  vesktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        install: [installer, portable]
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enable pnpm (corepack, as the README says)
+        run: corepack enable
+      - name: Install Vesktop 1.6.8 (${{ matrix.install }})
+        run: |
+          if ("${{ matrix.install }}" -eq "installer") {
+            Invoke-WebRequest https://github.com/Vencord/Vesktop/releases/download/v1.6.8/Vesktop-Setup-1.6.8.exe -OutFile "$env:RUNNER_TEMP\setup.exe"
+            Start-Process -Wait "$env:RUNNER_TEMP\setup.exe" -ArgumentList "/S"
+            Start-Sleep 5
+            Get-Process Vesktop -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep 2
+            $exe = (Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter Vesktop.exe | Select-Object -First 1).FullName
+            $data = "$env:APPDATA\vesktop"
+          } else {
+            Invoke-WebRequest https://github.com/Vencord/Vesktop/releases/download/v1.6.8/Vesktop-1.6.8-win.zip -OutFile "$env:RUNNER_TEMP\vesktop.zip"
+            Expand-Archive "$env:RUNNER_TEMP\vesktop.zip" "$env:USERPROFILE\Downloads\Vesktop portable"
+            $exe = (Get-ChildItem "$env:USERPROFILE\Downloads\Vesktop portable" -Recurse -Filter Vesktop.exe | Select-Object -First 1).FullName
+            $data = Join-Path (Split-Path $exe) "Data"
+          }
+          "Vesktop: $exe"
+          # As if Vesktop had been used before (past its first-launch screen).
+          New-Item -ItemType Directory -Force $data | Out-Null
+          '{"firstLaunch":false}' | Set-Content -Encoding utf8NoBOM "$data\state.json"
+          "VESKTOP_EXE=$exe" >> $env:GITHUB_ENV
+          "VESKTOP_FOLDER=$(Split-Path $exe)" >> $env:GITHUB_ENV
+      - name: Install speech model v4 and the engine (install-engine.cmd)
+        run: .\install-engine.cmd
+      - name: Build Vencord with NowCaption and set up Vesktop (update-plugin.cmd)
+        timeout-minutes: 15
+        run: |
+          if ("${{ matrix.install }}" -eq "portable") {
+            # Not found where Vesktop is usually installed: the updater must say so instead of claiming success.
+            $out = cmd /c ".\update-plugin.cmd --setup-vencord 2>&1"; $code = $LASTEXITCODE
+            $out
+            if ($code -eq 0 -or -not ($out -match "NOT FINISHED")) { throw "update-plugin should have said NOT FINISHED" }
+            .\update-plugin.cmd --vesktop-data "$env:VESKTOP_FOLDER"
+          } else {
+            .\update-plugin.cmd --setup-vencord
+          }
+          if ($LASTEXITCODE -ne 0) { throw "update-plugin failed" }
+      - name: Doctor report
+        run: |
+          if ("${{ matrix.install }}" -eq "portable") { node scripts\doctor.mjs --vesktop-data "$env:VESKTOP_FOLDER" } else { node scripts\doctor.mjs }
+      - name: Start Vesktop and check NowCaption over DevTools
+        timeout-minutes: 10
+        run: |
+          $vesktop = Start-Process $env:VESKTOP_EXE -ArgumentList "--remote-debugging-port=9222" -PassThru
+          node tests\e2e\vesktop-check.mjs 9222
+          $code = $LASTEXITCODE
+          Get-Process Vesktop -ErrorAction SilentlyContinue | Stop-Process -Force
+          exit $code

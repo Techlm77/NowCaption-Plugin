@@ -4,9 +4,9 @@
  */
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
-import { argValue, findVesktopInstalls, hasCompiledPlugin, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, run, samePath, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
+import { argValue, findVesktopInstalls, hasCompiledPlugin, installLabel, portableHint, runningVesktopExecutables, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, run, samePath, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
 import { MODEL_DIRECTORY } from "./runtime-paths.mjs";
 
 const args = process.argv.slice(2);
@@ -48,11 +48,11 @@ async function main() {
     print(`  ${mark(await builtWithPlugin(dist))} built with NowCaption (dist)`);
 
     for (const install of findVesktopInstalls({ customDataDir: argValue(args, "--vesktop-data") })) {
-        const label = install.kind === "flatpak" ? "Flatpak Vesktop (dev.vencord.Vesktop)" : "Vesktop";
+        const label = installLabel(install);
         print(`\n${label}: ${install.dataDir}${vesktopRunning(install) ? " (running)" : ""}`);
         const state = await readVesktopState(install.dataDir).catch(e => { print(`  ${e.message}`); return undefined; });
         const expected = install.kind === "flatpak" ? install.vencordCopy : dist;
-        if (!state) print("  Not started yet (no state.json).");
+        if (!state) print(`  Not started from this folder yet (no state.json). ${portableHint()}`);
         else if (!state.vencordDir) print("  Uses Vesktop's own Vencord, not the NowCaption build: run update-plugin.");
         else {
             const files = (await Promise.all(VESKTOP_REQUIRED_FILES.map(f => exists(join(state.vencordDir, f))))).every(Boolean);
@@ -69,6 +69,11 @@ async function main() {
         const old = (await readdir(join(root, "models")).catch(() => [])).filter(n => n !== MODEL_DIRECTORY && n.startsWith("nowcaption-fastconformer"));
         if (old.length) print(`  Old models still installed: ${old.join(", ")} (update-plugin removes them after a successful update)`);
         if (!modelOk || !engineOk) print(`  Fix: node scripts/install-engine.mjs${install.kind === "flatpak" ? " --target flatpak" : ""}`);
+    }
+    for (const { exe, portable } of runningVesktopExecutables()) {
+        print(`\nRunning now: ${exe}`);
+        if (portable) print(`  This is a portable Vesktop: its settings are in ${join(dirname(exe), "Data")}.\n` +
+            `  Set it up with: update-plugin.cmd --vesktop-data "${dirname(exe)}" (quit Vesktop first)`);
     }
     print("\nNot checked here: live Discord audio, speaker identification and font rendering (see the diagnostics tab in Vesktop).");
 }

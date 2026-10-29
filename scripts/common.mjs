@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readlinkSync } from "node:fs";
 import { copyFile, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import { getRuntimeRoot, MODEL_DIRECTORY, VESKTOP_FLATPAK_ID } from "./runtime-paths.mjs";
 
@@ -95,17 +95,46 @@ export function flatpakVesktopInstalled({ platform = process.platform, home = ho
 }
 
 /**
- * Vesktop installations to set up. `kind` is "native", "flatpak" or "custom" (--vesktop-data).
- * A native one counts when its data folder exists or no Flatpak one does (a fresh install is native by default).
+ * The data folder for --vesktop-data: a portable Windows Vesktop (the .zip download) keeps its settings in "Data" next
+ * to Vesktop.exe, so the Vesktop folder or Vesktop.exe itself is accepted too. Anything else is used as given.
+ */
+export function customVesktopDataDir(path) {
+    let folder = resolve(path);
+    if (/\.exe$/i.test(folder)) folder = dirname(folder);
+    return existsSync(join(folder, "Vesktop.exe")) || existsSync(join(folder, "vesktop.exe")) ? join(folder, "Data") : folder;
+}
+
+/** How the scripts name an installation in their messages. */
+export function installLabel(install) {
+    return { flatpak: "Flatpak Vesktop (dev.vencord.Vesktop)", scoop: "Scoop's Vesktop", custom: "Vesktop (--vesktop-data)" }[install.kind] ?? "Vesktop";
+}
+
+/** What to tell someone whose Vesktop wasn't found where the scripts look. */
+export function portableHint(platform = process.platform) {
+    return platform === "win32"
+        ? "If you use the portable Vesktop (the .zip download), run this again with --vesktop-data \"<the folder that has Vesktop.exe>\"."
+        : "If your Vesktop keeps its settings somewhere else, run this again with --vesktop-data <that folder>.";
+}
+
+/** Scoop installs Vesktop's portable .zip and keeps its Data folder across updates. */
+export function scoopVesktopDataDir({ environment = process.env, home = homedir() } = {}) {
+    return join(environment.SCOOP || join(home, "scoop"), "apps", "vesktop", "current", "Data");
+}
+
+/**
+ * Vesktop installations to set up. `kind` is "native", "flatpak", "scoop" (Windows) or "custom" (--vesktop-data).
+ * A native one counts when its data folder exists or nothing else was found (a fresh install is native by default).
  */
 export function findVesktopInstalls({ platform = process.platform, environment = process.env, home = homedir(), customDataDir, flatpak } = {}) {
-    if (customDataDir) return [{ kind: "custom", dataDir: resolve(customDataDir), runtimeRoot: getRuntimeRoot({ platform, environment, home, target: "native" }) }];
+    const nativeRuntime = getRuntimeRoot({ platform, environment, home, target: "native" });
+    if (customDataDir) return [{ kind: "custom", dataDir: customVesktopDataDir(customDataDir), runtimeRoot: nativeRuntime }];
     const installs = [];
     flatpak ??= flatpakVesktopInstalled({ platform, home });
+    const scoopDir = platform === "win32" ? scoopVesktopDataDir({ environment, home }) : undefined;
+    const scoop = !!scoopDir && existsSync(dirname(scoopDir));
     const nativeDir = nativeVesktopDataDir({ platform, environment, home });
-    if (existsSync(nativeDir) || !flatpak) {
-        installs.push({ kind: "native", dataDir: nativeDir, runtimeRoot: getRuntimeRoot({ platform, environment, home, target: "native" }) });
-    }
+    if (existsSync(nativeDir) || (!flatpak && !scoop)) installs.push({ kind: "native", dataDir: nativeDir, runtimeRoot: nativeRuntime });
+    if (scoop) installs.push({ kind: "scoop", dataDir: scoopDir, runtimeRoot: nativeRuntime });
     if (flatpak) {
         installs.push({
             kind: "flatpak", dataDir: flatpakVesktopDataDir(home), runtimeRoot: getRuntimeRoot({ platform, environment, home, target: "flatpak" }),
@@ -143,6 +172,17 @@ function processName(pid, platform) {
         if (platform === "linux") return readFileSync(`/proc/${pid}/comm`, "utf8");
         return run("ps", ["-p", String(pid), "-o", "comm="], { capture: true });
     } catch { return undefined; }
+}
+
+/** Windows: the Vesktop.exe files that are running now (a portable one has no "Uninstall Vesktop.exe" beside it). */
+export function runningVesktopExecutables() {
+    if (process.platform !== "win32") return [];
+    const powershell = join(process.env.SystemRoot || "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+    try {
+        const out = run(powershell, ["-NoProfile", "-NonInteractive", "-Command",
+            "Get-Process -Name Vesktop -ErrorAction SilentlyContinue | ForEach-Object { $_.Path } | Sort-Object -Unique"], { capture: true });
+        return out.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(exe => ({ exe, portable: !existsSync(join(dirname(exe), "Uninstall Vesktop.exe")) }));
+    } catch { return []; }
 }
 
 /** Removes earlier speech models (and their downloads) from a runtime folder; returns what was removed. */

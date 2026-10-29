@@ -17,7 +17,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { argValue, findVesktopInstalls, hasCompiledPlugin, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, removeOldModels, run, samePath, setVencordDir, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
+import { argValue, findVesktopInstalls, hasCompiledPlugin, installLabel, portableHint, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, removeOldModels, run, samePath, setVencordDir, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
 import { MODEL_DIRECTORY } from "./runtime-paths.mjs";
 
 const VERSION = "v19";
@@ -162,18 +162,21 @@ async function main() {
     } finally { await rm(stage, { recursive: true, force: true }); }
 
     const nextSteps = [];
+    let ready = 0; // Vesktop installs that will load this build
     for (const install of installs) {
-        const label = install.kind === "flatpak" ? "Flatpak Vesktop" : "Vesktop";
+        const label = installLabel(install);
         const location = install.kind === "flatpak" ? install.vencordCopy : dist;
         if (install.kind === "flatpak") await copyForFlatpak(location);
         const state = await readVesktopState(install.dataDir);
         if (!state) {
-            nextSteps.push(`${label} hasn't been started yet: start it once, quit it, and run this again (or set Settings → Vesktop → Vencord Location to ${location}).`);
+            nextSteps.push(`${label} hasn't been started from ${install.dataDir} yet: start it once, quit it, and run this again (or set Settings → Vesktop → Vencord Location to ${location}).`);
         } else if (samePath(state.vencordDir, location)) {
             console.log(`${label} already uses this build.`);
+            ready++;
         } else {
             const backup = await setVencordDir(install.dataDir, location);
             console.log(`${label} now loads Vencord from ${location} (previous settings saved to ${backup}).`);
+            ready++;
         }
         if (!await engineReady(install.runtimeRoot)) {
             nextSteps.push(`Install the speech engine for ${label}: node scripts/install-engine.mjs${install.kind === "flatpak" ? " --target flatpak" : ""}`);
@@ -182,7 +185,15 @@ async function main() {
             for (const name of await removeOldModels(install.runtimeRoot)) console.log(`Removed the old ${name} for ${label}.`);
         }
     }
-    console.log(`\nSUCCESS: NowCaption for Vesktop ${VERSION} is built${installs.length ? " and set up" : ""}.`);
+    if (configure && !ready) {
+        // Built, but no Vesktop will load it: NowCaption wouldn't appear in the plugin list.
+        console.error(`\nNOT FINISHED: NowCaption for Vesktop ${VERSION} is built in ${dist}, but no Vesktop is set up to load it yet.`);
+        for (const step of nextSteps) console.error(`Next: ${step}`);
+        console.error(portableHint());
+        process.exitCode = 1;
+        return;
+    }
+    console.log(`\nSUCCESS: NowCaption for Vesktop ${VERSION} is built${ready ? " and set up" : ""}.`);
     for (const step of nextSteps) console.log(`Next: ${step}`);
     console.log("Then start Vesktop and open the CC · Captions button. In DevTools, window.__nowCaption?.profile()?.nowCaptionPlugin shows the version.");
 }

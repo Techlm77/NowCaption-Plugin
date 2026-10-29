@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { cmdCommandLine, findVesktopInstalls, hasCompiledPlugin, nativeVesktopDataDir, removeOldModels, setVencordDir, vesktopRunning } from "../scripts/common.mjs";
+import { cmdCommandLine, customVesktopDataDir, findVesktopInstalls, hasCompiledPlugin, installLabel, nativeVesktopDataDir, removeOldModels, setVencordDir, vesktopRunning } from "../scripts/common.mjs";
 
 // npm and pnpm are .cmd scripts on Windows: every argument quoted, nothing cmd.exe would expand. The program name
 // stays unquoted, or npm.cmd looks for its own files in the current folder (it failed this way on Windows CI).
@@ -51,6 +51,25 @@ try {
     assert.deepEqual(found.map(i => i.kind), ["native", "flatpak"], "both installed: set up both");
     found = findVesktopInstalls({ platform: "linux", environment: {}, home: linuxHome, customDataDir: join(temp, "portable") });
     assert.deepEqual(found.map(i => i.kind), ["custom"]);
+
+    // Windows: Scoop's Vesktop (the portable .zip) is found by itself; the native one only when it has been used.
+    const scoopRoot = join(temp, "scoop");
+    await mkdir(join(scoopRoot, "apps", "vesktop", "current"), { recursive: true });
+    found = findVesktopInstalls({ platform: "win32", environment: { SCOOP: scoopRoot, APPDATA: join(temp, "Roaming") }, home: linuxHome, flatpak: false });
+    assert.deepEqual(found.map(i => i.kind), ["scoop"], "only Scoop's Vesktop: no unused native target");
+    assert.equal(found[0].dataDir, join(scoopRoot, "apps", "vesktop", "current", "Data"));
+    assert.equal(installLabel(found[0]), "Scoop's Vesktop");
+    await mkdir(join(temp, "Roaming", "vesktop"), { recursive: true });
+    found = findVesktopInstalls({ platform: "win32", environment: { SCOOP: scoopRoot, APPDATA: join(temp, "Roaming") }, home: linuxHome, flatpak: false });
+    assert.deepEqual(found.map(i => i.kind), ["native", "scoop"]);
+    // --vesktop-data takes the portable Vesktop's folder, its Vesktop.exe, or the Data folder itself.
+    const portable = join(temp, "Vesktop-1.6.8-win");
+    await mkdir(portable);
+    await writeFile(join(portable, "Vesktop.exe"), "");
+    assert.equal(customVesktopDataDir(portable), join(portable, "Data"));
+    assert.equal(customVesktopDataDir(join(portable, "Vesktop.exe")), join(portable, "Data"));
+    assert.equal(customVesktopDataDir(join(portable, "Data")), join(portable, "Data"));
+    assert.deepEqual(findVesktopInstalls({ customDataDir: portable }).map(i => [i.kind, i.dataDir]), [["custom", join(portable, "Data")]]);
 
     // state.json: only vencordDir changes, a backup is kept, and a second run changes nothing.
     const data = join(temp, "vesktop");
@@ -101,4 +120,4 @@ try {
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /--setup-vencord/, "a first-time user is told how to get Vencord");
 } finally { await rm(temp, { recursive: true, force: true }); }
-console.log("PASS v19 scripts: compiled-plugin check, cmd.exe quoting, Vesktop/Flatpak detection, state.json update with backup, stale locks, script arguments");
+console.log("PASS v19 scripts: compiled-plugin check, Scoop/portable Windows Vesktop, cmd.exe quoting, Vesktop/Flatpak detection, state.json update with backup, stale locks, script arguments");
