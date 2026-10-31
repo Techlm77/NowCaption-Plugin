@@ -5,11 +5,12 @@
  *   node scripts/update-plugin.mjs [--vencord DIR] [--setup-vencord] [--vesktop-data DIR] [--no-configure] [--preflight]
  *
  * --vencord        Vencord source folder (default: VENCORD_DIR or ~/Documents/Vencord-source)
- * --setup-vencord  clone Vencord into that folder first if it isn't there
+ * --setup-vencord  download Vencord into that folder first if it isn't there (git clone, or GitHub's archive without git)
  * --vesktop-data   Vesktop's data folder, for portable or unusual installs (default: found automatically,
  *                  including Flathub's dev.vencord.Vesktop)
  * --no-configure   build only; leave Vesktop's "Vencord location" setting alone
  * --keep-old-models keep earlier speech models (by default they're removed once this update has succeeded)
+ * --create-state   set up a Vesktop that's installed but has never been opened (used by the installer)
  * --preflight      check everything and change nothing
  */
 import { cp, mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
@@ -17,7 +18,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { argValue, findVesktopInstalls, hasCompiledPlugin, installLabel, portableHint, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, removeOldModels, run, samePath, setVencordDir, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
+import { argValue, downloadVencordArchive, findVesktopInstalls, hasCompiledPlugin, installLabel, portableHint, prependPath, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, removeOldModels, run, samePath, setVencordDir, toolsDir, vencordBuildEnv, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
 import { MODEL_DIRECTORY } from "./runtime-paths.mjs";
 
 const VERSION = "v19";
@@ -43,21 +44,43 @@ async function ensureVencord() {
             throw new Error(`No Vencord source folder at ${root}.\n` +
                 `  Run this again with --setup-vencord to download it there (needs git), or use --vencord DIR for another folder.`);
         }
-        if (!versionOf("git")) throw new Error("git is needed to download Vencord: install it from https://git-scm.com and run this again.");
         if (preflight) { console.log(`Would download Vencord into ${root}.`); return false; }
         if (await exists(root) && (await readdir(root)).length) throw new Error(`${root} exists but isn't a Vencord source folder; choose another with --vencord DIR.`);
         console.log(`Downloading Vencord into ${root}…`);
         await mkdir(dirname(root), { recursive: true });
-        run("git", ["clone", "--depth", "1", VENCORD_REPO, root]);
+        if (versionOf("git")) run("git", ["clone", "--depth", "1", VENCORD_REPO, root]);
+        else console.log(`Vencord ${(await downloadVencordArchive(root)).slice(0, 7)} downloaded (git isn't installed, so as an archive).`);
     }
-    if (!versionOf("pnpm")) {
-        throw new Error("pnpm is needed to build Vencord. Run `npm install -g pnpm`, then run this again (Node.js 24 and older also have `corepack enable`).");
-    }
+    if (!await ensurePnpm()) return true;
     if (!await exists(join(root, "node_modules"))) {
         if (preflight) { console.log("Would install Vencord's dependencies (pnpm install)."); return true; }
         console.log("Installing Vencord's dependencies (first time only)…");
         run("pnpm", ["install", "--frozen-lockfile"], { cwd: root });
     }
+    return true;
+}
+
+/**
+ * pnpm builds Vencord. Uses one that's installed when its major version matches what Vencord asks for; otherwise
+ * installs that exact version into NowCaption's own tools folder (no admin rights, nothing global).
+ * Returns false in preflight mode when it would have to be installed.
+ */
+async function ensurePnpm() {
+    let wanted;
+    try { wanted = /^pnpm@(\d+\.\d+\.\d+)/.exec(JSON.parse(await readFile(join(root, "package.json"), "utf8")).packageManager ?? "")?.[1]; }
+    catch { /* checked by the build */ }
+    const have = versionOf("pnpm");
+    if (have && (!wanted || have.split(".")[0] === wanted.split(".")[0])) return true;
+    const dir = join(toolsDir(), `pnpm-${wanted ?? "latest"}`);
+    const bin = join(dir, "node_modules", ".bin");
+    if (!await exists(join(bin, process.platform === "win32" ? "pnpm.cmd" : "pnpm"))) {
+        if (preflight) { console.log(`Would install pnpm ${wanted ?? "(latest)"} into ${dir}.`); return false; }
+        console.log(`Getting pnpm ${wanted ?? "(latest)"} to build Vencord (kept in NowCaption's own folder)…`);
+        await mkdir(dir, { recursive: true });
+        // pnpm's install scripts aren't needed (npm 11 skips them anyway and warns).
+        run("npm", ["install", "--prefix", dir, "--no-audit", "--no-fund", "--ignore-scripts", "--save-exact", `pnpm@${wanted ?? "latest"}`]);
+    }
+    prependPath(bin);
     return true;
 }
 
@@ -84,7 +107,7 @@ async function engineReady(runtimeRoot) {
 }
 
 async function main() {
-    if (Number(process.versions.node.split(".")[0]) < 20) throw new Error("Node.js 20 or newer is required.");
+    if (Number(process.versions.node.split(".")[0]) < 22) throw new Error("Node.js 22 or newer is required (Vencord needs it).");
     console.log(`Vencord source: ${root}`);
     for (const f of [join(source, "index.ts"), join(source, "native.ts")]) if (!await exists(f)) throw new Error(`Plugin file not found: ${f}`);
     const installs = configure ? findVesktopInstalls({ customDataDir: argValue(args, "--vesktop-data") }) : [];
@@ -132,7 +155,7 @@ async function main() {
         await rm(dest, { recursive: true, force: true });
         await rename(stage, dest);
         console.log("Building Vencord with the NowCaption plugin…");
-        run("pnpm", ["build", "--dev"], { cwd: root });
+        run("pnpm", ["build", "--dev"], { cwd: root, env: vencordBuildEnv(root) });
         await writeFile(join(dist, "package.json"), "{}\n");
         const licenseDir = join(dist, "font-licenses");
         await mkdir(licenseDir, { recursive: true });
@@ -168,7 +191,11 @@ async function main() {
         const location = install.kind === "flatpak" ? install.vencordCopy : dist;
         if (install.kind === "flatpak") await copyForFlatpak(location);
         const state = await readVesktopState(install.dataDir);
-        if (!state) {
+        if (!state && args.includes("--create-state")) {
+            await setVencordDir(install.dataDir, location, { create: true });
+            console.log(`${label} will load Vencord from ${location} (set up before its first start).`);
+            ready++;
+        } else if (!state) {
             nextSteps.push(`${label} hasn't been started from ${install.dataDir} yet: start it once, quit it, and run this again (or set Settings → Vesktop → Vencord Location to ${location}).`);
         } else if (samePath(state.vencordDir, location)) {
             console.log(`${label} already uses this build.`);

@@ -1,3 +1,5 @@
 # Windows batch files with Windows line endings, whatever the checkout settings.
 *.cmd text eol=crlf
 *.sh text eol=lf
+*.command text eol=lf
+*.ps1 text eol=crlf

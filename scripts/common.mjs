@@ -1,11 +1,13 @@
 /* Shared helpers for the installer scripts: running commands safely on every platform, and finding
  * Vesktop installations (native, Flathub's dev.vencord.Vesktop, or a custom data folder).
  */
-import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readlinkSync } from "node:fs";
-import { copyFile, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { spawn, spawnSync } from "node:child_process";
+import { createWriteStream, existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rename, rm, rmdir, writeFile } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 import { getRuntimeRoot, MODEL_DIRECTORY, VESKTOP_FLATPAK_ID } from "./runtime-paths.mjs";
 
@@ -45,13 +47,14 @@ export function cmdCommandLine(program, args) {
 }
 
 /** Runs a program with inherited output. `program` is a bare name (npm, pnpm, git, tar) or a full path. */
-export function run(program, args, { cwd, capture = false, platform = process.platform } = {}) {
+export function run(program, args, { cwd, capture = false, platform = process.platform, env } = {}) {
     const stdio = capture ? ["ignore", "pipe", "pipe"] : "inherit";
+    const environment = env ? { ...process.env, ...env } : undefined;
     const viaCmd = platform === "win32" && !/\.exe$/i.test(program);
     const result = viaCmd
         ? spawnSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", cmdCommandLine(program, args)],
-            { stdio, cwd, encoding: "utf8", windowsVerbatimArguments: true })
-        : spawnSync(program, args, { stdio, cwd, encoding: "utf8" });
+            { stdio, cwd, encoding: "utf8", windowsVerbatimArguments: true, env: environment })
+        : spawnSync(program, args, { stdio, cwd, encoding: "utf8", env: environment });
     if (result.error) throw new Error(`${program} could not be started: ${result.error.message}`);
     if (result.status !== 0) {
         const detail = capture ? `\n${(result.stderr || result.stdout || "").trim()}` : "";
@@ -211,9 +214,16 @@ export const samePath = (a, b) => !!a && !!b && resolve(a) === resolve(b);
  * Points Vesktop at a Vencord build (the "Vencord location" setting), keeping every other state key.
  * Returns the backup's path, or undefined when nothing had to change.
  */
-export async function setVencordDir(dataDir, vencordDir) {
+export async function setVencordDir(dataDir, vencordDir, { create = false } = {}) {
     const file = join(dataDir, "state.json");
     const state = await readVesktopState(dataDir);
+    if (!state && create) {
+        // Vesktop installed but never opened: its first-launch window still runs (it only checks for "firstLaunch")
+        // and keeps this setting.
+        await mkdir(dataDir, { recursive: true });
+        await writeFile(file, JSON.stringify({ vencordDir }, null, 4));
+        return "created";
+    }
     if (!state) throw new Error(`${file} doesn't exist yet: start Vesktop once, close it, then run this again.`);
     if (samePath(state.vencordDir, vencordDir)) return undefined;
     const backup = `${file}.nowcaption-backup-${new Date().toISOString().replace(/[:.]/g, "-")}`;
@@ -222,4 +232,169 @@ export async function setVencordDir(dataDir, vencordDir) {
     await writeFile(temp, JSON.stringify({ ...state, vencordDir }, null, 4));
     await rename(temp, file);
     return backup;
+}
+
+/** NowCaption's own tools (the installer's Node.js, pnpm): no admin rights, nothing installed system-wide. */
+export function toolsDir(options = {}) {
+    return join(getRuntimeRoot({ ...options, target: "native" }), "tools");
+}
+
+/** Puts a folder first on PATH, for this process and everything it starts (PATH is "Path" on Windows). */
+export function prependPath(dir, environment = process.env) {
+    const key = Object.keys(environment).find(k => k.toUpperCase() === "PATH") ?? "PATH";
+    const parts = String(environment[key] ?? "").split(delimiter).filter(Boolean);
+    if (!parts.some(part => samePath(part, dir))) environment[key] = [dir, ...parts].join(delimiter);
+}
+
+/** Records where a Vencord source folder that isn't a git checkout came from (Vencord's build asks git otherwise). */
+export const VENCORD_ORIGIN_FILE = ".nowcaption-vencord.json";
+export const VENCORD_REPO = "Vendicated/Vencord";
+
+/**
+ * Downloads Vencord's source at its newest commit as a GitHub archive, so git isn't needed. Returns the commit.
+ * `root` must not exist or be empty.
+ */
+export async function downloadVencordArchive(root, { repo = VENCORD_REPO, branch = "main" } = {}) {
+    const headers = { "User-Agent": "NowCaption-Vesktop-installer" };
+    let commit = branch;
+    try {
+        const res = await fetch(`https://api.github.com/repos/${repo}/commits/${branch}`, { headers: { ...headers, Accept: "application/vnd.github.sha" } });
+        const text = res.ok ? (await res.text()).trim() : "";
+        if (/^[0-9a-f]{40}$/.test(text)) commit = text;
+    } catch { /* GitHub's API can be rate-limited: the branch archive works too */ }
+    await mkdir(dirname(root), { recursive: true });
+    const stage = await mkdtemp(join(dirname(root), ".vencord-download-"));
+    try {
+        const archive = join(stage, "vencord.tar.gz");
+        const res = await fetch(`https://codeload.github.com/${repo}/tar.gz/${commit}`, { headers })
+            .catch(e => { throw new Error(`Vencord's download failed: ${e.message}`); });
+        if (!res.ok || !res.body) throw new Error(`Vencord's download failed: HTTP ${res.status}`);
+        await pipeline(Readable.fromWeb(res.body), createWriteStream(archive));
+        run(tarProgram(), ["-xzf", archive, "-C", stage]);
+        const top = (await readdir(stage)).find(name => name !== "vencord.tar.gz");
+        if (!top || !existsSync(join(stage, top, "scripts", "build", "build.mjs"))) throw new Error("The Vencord download isn't a Vencord source folder.");
+        await writeFile(join(stage, top, VENCORD_ORIGIN_FILE), JSON.stringify({ repo, commit, downloaded: new Date().toISOString() }, null, 4) + "\n");
+        if (existsSync(root)) await rmdir(root); // empty (checked by the caller); Windows can't rename onto a folder
+        await rename(join(stage, top), root);
+    } finally { await rm(stage, { recursive: true, force: true }); }
+    return commit;
+}
+
+/** Environment for building Vencord: a downloaded archive has no git history, so the build gets its version here. */
+export function vencordBuildEnv(root) {
+    if (existsSync(join(root, ".git"))) return {};
+    let origin = {};
+    try { origin = JSON.parse(readFileSync(join(root, VENCORD_ORIGIN_FILE), "utf8")); } catch { /* an older or hand-made folder */ }
+    const commit = typeof origin.commit === "string" ? origin.commit : "unknown";
+    return { VENCORD_HASH: /^[0-9a-f]{40}$/.test(commit) ? commit.slice(0, 7) : commit, VENCORD_REMOTE: origin.repo || VENCORD_REPO };
+}
+
+/** Where the Vesktop app itself can be installed (a data folder alone isn't proof: it outlives an uninstall). */
+// systemWide: false leaves out folders outside the home folder (for tests).
+export function vesktopAppCandidates({ platform = process.platform, environment = process.env, home = homedir(), systemWide = true } = {}) {
+    if (platform === "win32") {
+        const local = environment.LOCALAPPDATA || join(home, "AppData", "Local");
+        return [join(local, "vesktop", "vesktop.exe"), join(local, "Programs", "vesktop", "vesktop.exe"),
+            ...(systemWide ? [join(environment.ProgramFiles || "C:\\Program Files", "Vesktop", "vesktop.exe")] : [])];
+    }
+    if (platform === "darwin") return [...(systemWide ? ["/Applications/Vesktop.app"] : []), join(home, "Applications", "Vesktop.app")];
+    const onPath = String(environment.PATH ?? "").split(delimiter).filter(Boolean).map(dir => join(dir, "vesktop"));
+    const appImages = [join(home, "Applications"), join(home, "Downloads"), join(home, ".local", "bin"), join(home, "bin")]
+        .flatMap(dir => { try { return readdirSync(dir).filter(n => /^vesktop.*\.appimage$/i.test(n)).map(n => join(dir, n)); } catch { return []; } });
+    return [...onPath, ...(systemWide ? ["/opt/Vesktop/vesktop", "/opt/vesktop/vesktop", "/usr/lib/vesktop/vesktop"] : []), ...appImages];
+}
+
+/**
+ * Vesktop installations that really exist (an app, or a data folder Vesktop has used), with the app's path when
+ * known, plus whether the Discord app (maybe with Vencord) is installed, so the installer can explain the difference.
+ */
+export function detectVesktop({ platform = process.platform, environment = process.env, home = homedir(), flatpak, running = runningVesktopExecutables(), customDataDir, systemWide = true } = {}) {
+    const apps = vesktopAppCandidates({ platform, environment, home, systemWide }).filter(path => existsSync(path));
+    const used = dataDir => existsSync(join(dataDir, "state.json")) || existsSync(join(dataDir, "settings"));
+    const installs = findVesktopInstalls({ platform, environment, home, flatpak, customDataDir }).filter(install => {
+        if (install.kind === "native") {
+            install.app = apps[0];
+            // Linux: an AppImage can be anywhere, so a data folder Vesktop has used counts. Windows and macOS keep
+            // the data folder after an uninstall, so there the app itself has to be found.
+            return !!install.app || (platform === "linux" && used(install.dataDir));
+        }
+        if (install.kind === "scoop") install.app = join(dirname(install.dataDir), "vesktop.exe");
+        return true;
+    });
+    // A portable Vesktop (the Windows .zip) is only found while it runs.
+    for (const { exe, portable } of running) {
+        if (!portable || customDataDir) continue;
+        const dataDir = join(dirname(exe), "Data");
+        if (!installs.some(i => samePath(i.dataDir, dataDir))) installs.push({ kind: "custom", dataDir, runtimeRoot: getRuntimeRoot({ platform, environment, home, target: "native" }), app: exe, portableFolder: dirname(exe) });
+    }
+    const local = environment.LOCALAPPDATA || join(home, "AppData", "Local");
+    const roaming = environment.APPDATA || join(home, "AppData", "Roaming");
+    const discordPlaces = platform === "win32" ? [join(local, "Discord"), join(local, "DiscordCanary"), join(local, "DiscordPTB")]
+        : platform === "darwin" ? [...(systemWide ? ["/Applications/Discord.app"] : []), join(home, "Applications", "Discord.app")]
+            : [join(home, ".config", "discord"), join(home, ".var", "app", "com.discordapp.Discord"), ...(systemWide ? ["/opt/discord", "/usr/share/discord"] : [])];
+    const vencordPlaces = platform === "win32" ? [join(roaming, "Vencord")]
+        : platform === "darwin" ? [join(home, "Library", "Application Support", "Vencord")] : [join(home, ".config", "Vencord")];
+    return { installs, discord: discordPlaces.some(p => existsSync(p)), vencordOnDiscord: vencordPlaces.some(p => existsSync(p)) };
+}
+
+/** Quits a running Vesktop and waits until it's gone. Returns false if it's still running. */
+export async function closeVesktop(install, { platform = process.platform } = {}) {
+    try {
+        if (install.kind === "flatpak") run("flatpak", ["kill", VESKTOP_FLATPAK_ID], { capture: true });
+        else if (platform === "win32") run(join(process.env.SystemRoot || "C:\\Windows", "System32", "taskkill.exe"), ["/F", "/T", "/IM", "vesktop.exe"], { capture: true });
+        else if (platform === "darwin") run("osascript", ["-e", 'quit app "Vesktop"'], { capture: true });
+        else {
+            const link = readlinkSync(join(install.dataDir, "SingletonLock"));
+            process.kill(Number(link.slice(link.lastIndexOf("-") + 1)), "SIGTERM");
+        }
+    } catch { /* already gone, or checked below */ }
+    for (let i = 0; i < 40; i++) {
+        if (!vesktopRunning(install, { platform })) return true;
+        await new Promise(r => setTimeout(r, 500));
+    }
+    if (platform === "darwin") { try { run("pkill", ["-x", "Vesktop"], { capture: true }); } catch { /* checked below */ } }
+    await new Promise(r => setTimeout(r, 1500));
+    return !vesktopRunning(install, { platform });
+}
+
+/** Starts Vesktop without tying it to this window. Returns false when it isn't known how. */
+export function startVesktop(install, { platform = process.platform } = {}) {
+    let program, args = [];
+    if (install.kind === "flatpak") { program = "flatpak"; args = ["run", VESKTOP_FLATPAK_ID]; }
+    else if (platform === "darwin") { program = "open"; args = install.app ? [install.app] : ["-a", "Vesktop"]; }
+    else if (install.app) program = install.app;
+    else return false;
+    try {
+        spawn(program, args, { detached: true, stdio: "ignore", cwd: homedir() }).on("error", () => {}).unref();
+        return true;
+    } catch { return false; }
+}
+
+/**
+ * Turns NowCaption on in Vencord's settings for this Vesktop (keeps every other setting; backs the file up first).
+ * Returns "enabled", "already" or the reason it couldn't.
+ */
+export async function enableNowCaption(dataDir) {
+    const folder = join(dataDir, "settings");
+    const file = join(folder, "settings.json");
+    let settings = {}, existed = true;
+    try { settings = JSON.parse(await readFile(file, "utf8")); }
+    catch (e) {
+        if (e.code !== "ENOENT") return `Vencord's settings file couldn't be read (${e.message})`;
+        existed = false;
+    }
+    if (!settings || typeof settings !== "object" || Array.isArray(settings)) return "Vencord's settings file has an unexpected format";
+    if (settings.plugins?.NowCaption?.enabled === true) return "already";
+    await mkdir(folder, { recursive: true });
+    if (existed) await copyFile(file, `${file}.nowcaption-backup-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+    const plugins = { ...(settings.plugins && typeof settings.plugins === "object" ? settings.plugins : {}) };
+    // Up to v18 the plugin was NowCaptionDiscord. Vencord moves those settings only while "NowCaption" has none,
+    // so move them here, as it would, instead of starting from nothing.
+    const previous = plugins.NowCaption ?? plugins.NowCaptionDiscord ?? {};
+    if (!plugins.NowCaption) delete plugins.NowCaptionDiscord;
+    const next = { ...settings, plugins: { ...plugins, NowCaption: { ...previous, enabled: true } } };
+    const temp = `${file}.nowcaption-${process.pid}`;
+    await writeFile(temp, JSON.stringify(next, null, 4));
+    await rename(temp, file);
+    return "enabled";
 }
