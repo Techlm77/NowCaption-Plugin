@@ -1,3 +1,11 @@
+## Unreleased — Windows and macOS checked on real systems
+
+**Windows** (Windows 11 26H2, fresh install, normal user without admin rights, Vesktop 1.6.8 from its installer)
+- The README steps work as written: `install-engine.cmd`, `update-plugin.cmd --setup-vencord`, NowCaption in the
+  plugin list, and live captions in a real Discord call with the speaker verified by Discord.
+- pnpm: the README now says `npm install -g pnpm`. Node.js 25 and newer (26 is the current LTS) no longer include
+  `corepack`, so `corepack enable` failed with "not recognized".
+
 ## v19 — Speech model v4, four speakers, long calls, Windows/macOS/Flatpak installers
 
 **Name**

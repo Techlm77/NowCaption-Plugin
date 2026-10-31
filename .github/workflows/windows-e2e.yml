@@ -16,8 +16,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Enable pnpm (corepack, as the README says)
-        run: corepack enable
+      - name: Install pnpm (as the README says)
+        run: npm install -g pnpm
       - name: Install Vesktop 1.6.8 (${{ matrix.install }})
         run: |
           if ("${{ matrix.install }}" -eq "installer") {

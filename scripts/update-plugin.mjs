@@ -51,7 +51,7 @@ async function ensureVencord() {
         run("git", ["clone", "--depth", "1", VENCORD_REPO, root]);
     }
     if (!versionOf("pnpm")) {
-        throw new Error("pnpm is needed to build Vencord. Run `corepack enable` (included with Node.js), or `npm install -g pnpm`, then run this again.");
+        throw new Error("pnpm is needed to build Vencord. Run `npm install -g pnpm`, then run this again (Node.js 24 and older also have `corepack enable`).");
     }
     if (!await exists(join(root, "node_modules"))) {
         if (preflight) { console.log("Would install Vencord's dependencies (pnpm install)."); return true; }

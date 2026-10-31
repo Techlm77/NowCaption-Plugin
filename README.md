@@ -21,8 +21,10 @@ been tried in a real call yet; see `docs/PLATFORM_SUPPORT.md`.
 ## What you need
 
 - **Vesktop**, installed any way: from vesktop.dev or GitHub, Flathub (`dev.vencord.Vesktop`) or your package manager.
-- **Node.js 20 or newer** from [nodejs.org](https://nodejs.org) (it includes npm and corepack).
-- **pnpm**: run `corepack enable` once (or `npm install -g pnpm`).
+- **Node.js 20 or newer** from [nodejs.org](https://nodejs.org) (it includes npm).
+- **pnpm**: run `npm install -g pnpm` once (no admin rights needed). npm may warn that pnpm's install scripts
+  weren't run; pnpm works without them. Node.js 25 and newer no longer include `corepack`, so `corepack enable` only
+  works with older versions.
 - **git**, the first time only, to download Vencord's source code.
 - On Linux, `tar` and `bzip2` (almost every distribution has them).
 - About 150 MB for the speech model and engine (per Vesktop install) and 300 MB for Vencord's source code.
