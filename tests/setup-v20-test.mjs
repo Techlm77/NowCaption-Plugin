@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 
 import { backupsDir, defaultVencordDir, detectVesktop, enableNowCaption, prependPath, readVesktopState, setVencordDir, vencordBuildEnv, VENCORD_ORIGIN_FILE } from "../scripts/common.mjs";
 
@@ -137,7 +137,7 @@ const touch = (path, text = "") => { mkdirSync(join(path, ".."), { recursive: tr
     assert.equal(defaultVencordDir({ platform: "darwin", environment: {}, home }), join(home, "Library", "Application Support", "NowCaption-Vesktop", "Vencord-source"));
     assert.equal(backupsDir({ platform: "darwin", environment: {}, home }), join(home, "Library", "Application Support", "NowCaption-Vesktop", "backups"));
     assert.equal(backupsDir({ platform: "win32", environment: {}, home }), join(home, "Documents", "NowCaption-Vesktop-Backups"));
-    assert.equal(defaultVencordDir({ platform: "darwin", environment: { VENCORD_DIR: "/src/vc" }, home }), "/src/vc", "VENCORD_DIR still wins");
+    assert.equal(defaultVencordDir({ platform: "darwin", environment: { VENCORD_DIR: "/src/vc" }, home }), resolve("/src/vc"), "VENCORD_DIR still wins (made absolute, so a drive letter on Windows)");
 }
 
 // The double-click files are where the README says, and the Mac/Linux ones are executable.
