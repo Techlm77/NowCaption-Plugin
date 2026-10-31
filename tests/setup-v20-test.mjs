@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSy
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 
-import { detectVesktop, enableNowCaption, prependPath, readVesktopState, setVencordDir, vencordBuildEnv, VENCORD_ORIGIN_FILE } from "../scripts/common.mjs";
+import { backupsDir, defaultVencordDir, detectVesktop, enableNowCaption, prependPath, readVesktopState, setVencordDir, vencordBuildEnv, VENCORD_ORIGIN_FILE } from "../scripts/common.mjs";
 
 const fresh = () => mkdtempSync(join(tmpdir(), "nowcaption-setup-"));
 const touch = (path, text = "") => { mkdirSync(join(path, ".."), { recursive: true }); writeFileSync(path, text); };
@@ -127,6 +127,17 @@ const touch = (path, text = "") => { mkdirSync(join(path, ".."), { recursive: tr
     writeFileSync(join(archive, VENCORD_ORIGIN_FILE), JSON.stringify({ repo: "Vendicated/Vencord", commit: "8d64c8be7e68616f8f116a6fff9480051aa2a0c5" }));
     assert.deepEqual(vencordBuildEnv(archive), { VENCORD_HASH: "8d64c8b", VENCORD_REMOTE: "Vendicated/Vencord" });
     assert.deepEqual(vencordBuildEnv(fresh()), { VENCORD_HASH: "unknown", VENCORD_REMOTE: "Vendicated/Vencord" });
+}
+
+// Vencord's source and the backups: Documents, except on a Mac (macOS asks before apps read Documents, and Vesktop
+// would ask at every start), where they stay in NowCaption's folder in ~/Library.
+{
+    const home = "/home/jo";
+    assert.equal(defaultVencordDir({ platform: "linux", environment: {}, home }), join(home, "Documents", "Vencord-source"));
+    assert.equal(defaultVencordDir({ platform: "darwin", environment: {}, home }), join(home, "Library", "Application Support", "NowCaption-Vesktop", "Vencord-source"));
+    assert.equal(backupsDir({ platform: "darwin", environment: {}, home }), join(home, "Library", "Application Support", "NowCaption-Vesktop", "backups"));
+    assert.equal(backupsDir({ platform: "win32", environment: {}, home }), join(home, "Documents", "NowCaption-Vesktop-Backups"));
+    assert.equal(defaultVencordDir({ platform: "darwin", environment: { VENCORD_DIR: "/src/vc" }, home }), "/src/vc", "VENCORD_DIR still wins");
 }
 
 // The double-click files are where the README says, and the Mac/Linux ones are executable.

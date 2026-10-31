@@ -84,7 +84,8 @@ function dialog(title, message, ok) {
             return true;
         }
         if (process.platform === "darwin") {
-            run("osascript", ["-e", `display dialog (system attribute "NC_MESSAGE") with title (system attribute "NC_TITLE") buttons {"OK"} default button "OK" with icon ${ok ? "note" : "caution"}`], { capture: true, env });
+            // Text as arguments: AppleScript reads environment variables in an old encoding (the "·" came out wrong).
+            run("osascript", ["-e", "on run argv", "-e", `display dialog (item 1 of argv) with title (item 2 of argv) buttons {"OK"} default button "OK" with icon ${ok ? "note" : "caution"}`, "-e", "end run", message, title], { capture: true });
             return true;
         }
         if (process.env.DISPLAY || process.env.WAYLAND_DISPLAY) {

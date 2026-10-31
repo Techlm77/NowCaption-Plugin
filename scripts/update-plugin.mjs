@@ -4,7 +4,8 @@
  *
  *   node scripts/update-plugin.mjs [--vencord DIR] [--setup-vencord] [--vesktop-data DIR] [--no-configure] [--preflight]
  *
- * --vencord        Vencord source folder (default: VENCORD_DIR or ~/Documents/Vencord-source)
+ * --vencord        Vencord source folder (default: VENCORD_DIR, or ~/Documents/Vencord-source; on macOS
+ *                  ~/Library/Application Support/NowCaption-Vesktop/Vencord-source)
  * --setup-vencord  download Vencord into that folder first if it isn't there (git clone, or GitHub's archive without git)
  * --vesktop-data   Vesktop's data folder, for portable or unusual installs (default: found automatically,
  *                  including Flathub's dev.vencord.Vesktop)
@@ -15,23 +16,22 @@
  */
 import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { argValue, downloadVencordArchive, findVesktopInstalls, hasCompiledPlugin, installLabel, portableHint, prependPath, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, removeOldModels, run, samePath, setVencordDir, toolsDir, vencordBuildEnv, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
+import { argValue, backupsDir, defaultVencordDir, downloadVencordArchive, gitAvailable, findVesktopInstalls, hasCompiledPlugin, installLabel, portableHint, prependPath, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, removeOldModels, run, samePath, setVencordDir, toolsDir, vencordBuildEnv, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
 import { MODEL_DIRECTORY } from "./runtime-paths.mjs";
 
 const VERSION = "v19";
 const VENCORD_REPO = "https://github.com/Vendicated/Vencord.git";
 const here = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
-const root = resolve(argValue(args, "--vencord") ?? process.env.VENCORD_DIR ?? join(homedir(), "Documents", "Vencord-source"));
+const root = resolve(argValue(args, "--vencord") ?? defaultVencordDir());
 const source = join(here, "src", "userplugins", PLUGIN_FOLDER);
 const destParent = join(root, "src", "userplugins");
 const dest = join(destParent, PLUGIN_FOLDER);
 const dist = join(root, "dist");
-const backups = join(homedir(), "Documents", "NowCaption-Vesktop-Backups");
+const backups = backupsDir();
 const backupName = `nowCaption-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 const preflight = args.includes("--preflight");
 const configure = !args.includes("--no-configure");
@@ -49,7 +49,7 @@ async function ensureVencord() {
         if (await exists(root) && (await readdir(root)).length) throw new Error(`${root} exists but isn't a Vencord source folder; choose another with --vencord DIR.`);
         console.log(`Downloading Vencord into ${root}…`);
         await mkdir(dirname(root), { recursive: true });
-        if (versionOf("git")) run("git", ["clone", "--depth", "1", VENCORD_REPO, root]);
+        if (gitAvailable()) run("git", ["clone", "--depth", "1", VENCORD_REPO, root]);
         else console.log(`Vencord ${(await downloadVencordArchive(root)).slice(0, 7)} downloaded (git isn't installed, so as an archive).`);
     }
     if (!await ensurePnpm()) return true;

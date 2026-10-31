@@ -46,6 +46,32 @@ export function cmdCommandLine(program, args) {
     return `"${[program, ...parts.map(part => `"${part}"`)].join(" ")}"`;
 }
 
+/**
+ * Where Vencord's source (and its build, which Vesktop loads) and the backups go by default. macOS asks the user
+ * before any app reads ~/Documents (Terminal while installing, then Vesktop at every start, and "Don't Allow" would
+ * hide NowCaption), so there they go in NowCaption's own folder in ~/Library, which isn't guarded.
+ */
+export function defaultVencordDir({ platform = process.platform, environment = process.env, home = homedir() } = {}) {
+    if (environment.VENCORD_DIR) return resolve(environment.VENCORD_DIR);
+    return platform === "darwin" ? join(getRuntimeRoot({ platform, environment, home, target: "native" }), "Vencord-source") : join(home, "Documents", "Vencord-source");
+}
+export function backupsDir({ platform = process.platform, environment = process.env, home = homedir() } = {}) {
+    return platform === "darwin" ? join(getRuntimeRoot({ platform, environment, home, target: "native" }), "backups") : join(home, "Documents", "NowCaption-Vesktop-Backups");
+}
+
+/**
+ * Whether git can be used. On a Mac without Apple's command line tools, /usr/bin/git is only a stub that opens an
+ * "install the tools?" dialog, so it isn't even asked for its version there.
+ */
+export function gitAvailable({ platform = process.platform } = {}) {
+    if (platform === "darwin") {
+        const onPath = String(process.env.PATH ?? "").split(delimiter).filter(Boolean).map(dir => join(dir, "git")).find(path => existsSync(path));
+        if (!onPath) return false;
+        if (onPath === "/usr/bin/git") { try { run("/usr/bin/xcode-select", ["-p"], { capture: true }); } catch { return false; } }
+    }
+    return !!versionOf("git");
+}
+
 /** Runs a program with inherited output. `program` is a bare name (npm, pnpm, git, tar) or a full path. */
 export function run(program, args, { cwd, capture = false, platform = process.platform, env } = {}) {
     const stdio = capture ? ["ignore", "pipe", "pipe"] : "inherit";

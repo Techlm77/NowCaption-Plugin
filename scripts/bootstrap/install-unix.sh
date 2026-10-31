@@ -67,5 +67,12 @@ if [ ! -x "$node" ]; then
     rm -rf "$stage" "$tools/$name" && mkdir -p "$stage" && tar -xzf "$part" -C "$stage" && mv "$stage/$name" "$tools/$name" || fail "couldn't unpack Node.js"
     rm -rf "$stage" "$part"
 fi
+# Official Node.js builds need a few system libraries; minimal Linux systems can lack libatomic.
+if ! err=$("$node" --version 2>&1 >/dev/null); then
+    case "$err" in
+        *libatomic*) fail "Node.js needs the libatomic library. Install your distribution's libatomic1 (Debian, Ubuntu) or libatomic (Fedora, openSUSE) package, then run this installer again." ;;
+        *) fail "Node.js couldn't start: $err" ;;
+    esac
+fi
 # setup.mjs keeps the window open itself when there's something to read.
 exec "$node" "$HERE/scripts/setup.mjs" "$@"

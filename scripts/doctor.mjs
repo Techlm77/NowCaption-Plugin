@@ -6,11 +6,11 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
-import { argValue, findVesktopInstalls, hasCompiledPlugin, installLabel, portableHint, runningVesktopExecutables, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, run, samePath, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
+import { argValue, defaultVencordDir, findVesktopInstalls, gitAvailable, hasCompiledPlugin, installLabel, portableHint, runningVesktopExecutables, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, run, samePath, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
 import { MODEL_DIRECTORY } from "./runtime-paths.mjs";
 
 const args = process.argv.slice(2);
-const vencord = resolve(argValue(args, "--vencord") ?? process.env.VENCORD_DIR ?? join(homedir(), "Documents", "Vencord-source"));
+const vencord = resolve(argValue(args, "--vencord") ?? defaultVencordDir());
 const dist = join(vencord, "dist");
 async function exists(path) { try { await stat(path); return true; } catch { return false; } }
 const mark = ok => ok ? "OK     " : "MISSING";
@@ -34,7 +34,7 @@ async function builtWithPlugin(folder) {
 
 async function main() {
     print("NowCaption for Vesktop: installation report (nothing is changed)\n");
-    print(`Host: ${process.platform}/${process.arch} · Node ${process.version} · npm ${versionOf("npm") ?? "not found"} · pnpm ${versionOf("pnpm") ?? "not found"} · git ${versionOf("git") ? "found" : "not found"}`);
+    print(`Host: ${process.platform}/${process.arch} · Node ${process.version} · npm ${versionOf("npm") ?? "not found"} · pnpm ${versionOf("pnpm") ?? "not found"} · git ${gitAvailable() ? "found" : "not found (not needed)"}`);
     if (process.platform === "linux") print(`bzip2 (to unpack the model): ${versionOf("bzip2") || (await exists("/usr/bin/bzip2")) ? "found" : "NOT found: install your distribution's bzip2 package"}`);
     if (Number(process.versions.node.split(".")[0]) < 20) print("Node.js 20 or newer is required.");
 

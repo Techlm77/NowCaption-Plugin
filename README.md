@@ -40,7 +40,9 @@ The first installation downloads about 300 MB and takes a few minutes. To **upda
 - **Windows**: "The publisher could not be verified": click **Run**. (If you see "Windows protected your PC",
   click **More info → Run anyway**.)
 - **macOS**: "“Install on Mac.command” Not Opened": click **Done**, open **System Settings → Privacy & Security**,
-  scroll down and click **Open Anyway** next to the installer's name, then **Open**.
+  scroll down to **Security** and click **Open Anyway** next to the installer's name, click **Open Anyway** again,
+  and enter your Mac's password. When Terminal asks to access your **Downloads** folder (where the installer is),
+  click **Allow**.
 - **Linux**: if double-clicking opens the file in an editor, right-click it and choose **Run as a Program** (or run
   `./"Install on Linux.sh"` in a terminal).
 
@@ -62,8 +64,11 @@ for help). Where things go:
 | | Windows | macOS | Linux |
 |---|---|---|---|
 | Speech model, engine, tools, logs | `%LOCALAPPDATA%\NowCaption-Vesktop` | `~/Library/Application Support/NowCaption-Vesktop` | `~/.local/share/nowcaption-vesktop` |
-| Vencord's source and build | `Documents\Vencord-source` | `~/Documents/Vencord-source` | `~/Documents/Vencord-source` |
-| Backups of earlier versions | `Documents\NowCaption-Vesktop-Backups` | same | same |
+| Vencord's source and build | `Documents\Vencord-source` | `…/NowCaption-Vesktop/Vencord-source` | `~/Documents/Vencord-source` |
+| Backups of earlier versions | `Documents\NowCaption-Vesktop-Backups` | `…/NowCaption-Vesktop/backups` | `~/Documents/NowCaption-Vesktop-Backups` |
+
+On a Mac everything stays in NowCaption's folder: macOS asks before an app may read Documents, and Vesktop would
+have to ask at every start.
 
 Flathub's Vesktop can only read its own folder, so it gets its own copy of the model, engine and build in
 `~/.var/app/dev.vencord.Vesktop/data/nowcaption-vesktop`. It needs no extra permissions.
