@@ -84,6 +84,11 @@ const touch = (path, text = "") => { mkdirSync(join(path, ".."), { recursive: tr
     await enableNowCaption(v18);
     assert.deepEqual(JSON.parse(readFileSync(join(v18, "settings", "settings.json"), "utf8")).plugins, { NowCaption: { enabled: true, font: "lexend" } });
 
+    const bom = fresh();
+    touch(join(bom, "settings", "settings.json"), "\uFEFF" + JSON.stringify({ plugins: { NoTrack: { enabled: true } } }));
+    assert.equal(await enableNowCaption(bom), "enabled", "a byte-order mark (PowerShell, some editors) is fine");
+    assert.ok(!readFileSync(join(bom, "settings", "settings.json"), "utf8").startsWith("\uFEFF"), "written back without one");
+
     const broken = fresh();
     touch(join(broken, "settings", "settings.json"), "{ not json");
     assert.match(await enableNowCaption(broken), /couldn't be read/);

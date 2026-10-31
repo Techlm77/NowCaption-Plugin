@@ -131,6 +131,12 @@ async function main() {
         return fail("Vesktop isn't installed yet.");
     }
     for (const install of found.installs) good(`${installLabel(install)}${install.app ? `: ${hideHome(install.app)}` : ""}`);
+    // Linux's tar unpacks the speech model (.tar.bz2) with the bzip2 program, which minimal systems can lack.
+    if (process.platform === "linux" && !["bzip2", "/usr/bin/bzip2", "/bin/bzip2"].some(program => { try { run(program, ["--help"], { capture: true }); return true; } catch { return false; } })) {
+        return fail("The bzip2 program is missing: it unpacks the speech model.",
+            "  Install your distribution's bzip2 package, then run this installer again:\n" +
+            "    Debian/Ubuntu: sudo apt install bzip2 · Fedora: sudo dnf install bzip2 · Arch: sudo pacman -S bzip2 · openSUSE: sudo zypper install bzip2");
+    }
     if (found.installs.some(i => i.kind === "flatpak")) say("  Flathub's Vesktop gets its own copy of everything inside its sandbox folder.");
 
     heading("Closing Vesktop");

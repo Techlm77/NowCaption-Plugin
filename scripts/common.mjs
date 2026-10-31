@@ -204,8 +204,11 @@ export async function removeOldModels(root) {
     return removed;
 }
 
+/** JSON.parse that ignores a UTF-8 byte-order mark (some Windows editors and PowerShell's Set-Content add one). */
+export const parseJson = text => JSON.parse(String(text).replace(/^\uFEFF/, ""));
+
 export async function readVesktopState(dataDir) {
-    try { return JSON.parse(await readFile(join(dataDir, "state.json"), "utf8")); }
+    try { return parseJson(await readFile(join(dataDir, "state.json"), "utf8")); }
     catch (e) { if (e.code === "ENOENT") return undefined; throw new Error(`Can't read ${join(dataDir, "state.json")}: ${e.message}`); }
 }
 export const samePath = (a, b) => !!a && !!b && resolve(a) === resolve(b);
@@ -378,7 +381,7 @@ export async function enableNowCaption(dataDir) {
     const folder = join(dataDir, "settings");
     const file = join(folder, "settings.json");
     let settings = {}, existed = true;
-    try { settings = JSON.parse(await readFile(file, "utf8")); }
+    try { settings = parseJson(await readFile(file, "utf8")); }
     catch (e) {
         if (e.code !== "ENOENT") return `Vencord's settings file couldn't be read (${e.message})`;
         existed = false;
