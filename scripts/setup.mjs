@@ -153,7 +153,7 @@ async function main() {
     heading("Building Vencord with NowCaption (the first time takes a few minutes)");
     const pluginArgs = ["--setup-vencord", "--create-state", ...passThrough];
     if (custom) pluginArgs.push("--vesktop-data", custom.portableFolder ?? custom.dataDir);
-    if (await runScript("update-plugin.mjs", pluginArgs) !== 0) return fail("Vencord with NowCaption couldn't be built or set up.", "The messages above say why. Your previous plugin and build were restored.");
+    if (await runScript("update-plugin.mjs", pluginArgs) !== 0) return fail("Vencord with NowCaption couldn't be built or set up.", "The messages above say why. Vesktop wasn't changed (an earlier NowCaption build, if there was one, was put back).");
 
     heading("Turning NowCaption on");
     for (const install of found.installs) {

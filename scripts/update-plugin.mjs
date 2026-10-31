@@ -13,9 +13,10 @@
  * --create-state   set up a Vesktop that's installed but has never been opened (used by the installer)
  * --preflight      check everything and change nothing
  */
+import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { argValue, downloadVencordArchive, findVesktopInstalls, hasCompiledPlugin, installLabel, portableHint, prependPath, LEGACY_PLUGIN_FOLDERS, PLUGIN_FOLDER, readVesktopState, removeOldModels, run, samePath, setVencordDir, toolsDir, vencordBuildEnv, versionOf, VESKTOP_REQUIRED_FILES, vesktopRunning } from "./common.mjs";
@@ -72,16 +73,28 @@ async function ensurePnpm() {
     const have = versionOf("pnpm");
     if (have && (!wanted || have.split(".")[0] === wanted.split(".")[0])) return true;
     const dir = join(toolsDir(), `pnpm-${wanted ?? "latest"}`);
-    const bin = join(dir, "node_modules", ".bin");
-    if (!await exists(join(bin, process.platform === "win32" ? "pnpm.cmd" : "pnpm"))) {
+    const shim = join(dir, "bin");
+    if (!await exists(join(shim, process.platform === "win32" ? "pnpm.cmd" : "pnpm"))) {
         if (preflight) { console.log(`Would install pnpm ${wanted ?? "(latest)"} into ${dir}.`); return false; }
         console.log(`Getting pnpm ${wanted ?? "(latest)"} to build Vencord (kept in NowCaption's own folder)…`);
         await mkdir(dir, { recursive: true });
-        // pnpm's install scripts aren't needed (npm 11 skips them anyway and warns).
+        // Without its install scripts (npm 11 skips them by default) pnpm's own "pnpm" launcher is only a
+        // placeholder for a native build, so start its JavaScript version with Node through launchers written here.
         run("npm", ["install", "--prefix", dir, "--no-audit", "--no-fund", "--ignore-scripts", "--save-exact", `pnpm@${wanted ?? "latest"}`]);
+        await writePnpmLaunchers(dir, shim);
     }
-    prependPath(bin);
+    prependPath(shim);
     return true;
+}
+
+/** "pnpm" launchers that run pnpm's JavaScript entry point with the Node.js on PATH (the installer's own one first). */
+async function writePnpmLaunchers(dir, shim) {
+    const entry = ["pnpm.mjs", "pnpm.cjs"].map(name => join(dir, "node_modules", "pnpm", "bin", name)).find(path => existsSync(path));
+    if (!entry) throw new Error(`pnpm was installed in ${dir}, but its bin/pnpm.mjs is missing.`);
+    const relative = join("..", "node_modules", "pnpm", "bin", basename(entry));
+    await mkdir(shim, { recursive: true });
+    await writeFile(join(shim, "pnpm.cmd"), `@echo off\r\nnode "%~dp0${relative}" %*\r\n`);
+    await writeFile(join(shim, "pnpm"), `#!/bin/sh\nexec node "$(dirname "$0")/${relative.split("\\").join("/")}" "$@"\n`, { mode: 0o755 });
 }
 
 /** The sandbox can't read the Vencord folder: copy the files Vesktop loads into Flatpak Vesktop's own folder. */

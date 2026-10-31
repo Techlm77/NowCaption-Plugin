@@ -14,66 +14,79 @@ same model and a speech engine for Vesktop.
 - Works with Vesktop on **Windows, macOS and Linux**, including **Flathub's Vesktop** (Flatpak).
 
 This is a Vencord userplugin, not an official Vencord plugin. It's called **NowCaption** in Vesktop's plugin list
-(up to v18 it was called NowCaptionDiscord; updating keeps whether it's turned on and your appearance settings). Status: tested on Linux, with the normal
-and the Flathub Vesktop. On Windows and macOS the installers and engine are covered by the CI workflow but haven't
-been tried in a real call yet; see `docs/PLATFORM_SUPPORT.md`.
-
-## What you need
-
-- **Vesktop**, installed any way: from vesktop.dev or GitHub, Flathub (`dev.vencord.Vesktop`) or your package manager.
-- **Node.js 20 or newer** from [nodejs.org](https://nodejs.org) (it includes npm).
-- **pnpm**: run `npm install -g pnpm` once (no admin rights needed). npm may warn that pnpm's install scripts
-  weren't run; pnpm works without them. Node.js 25 and newer no longer include `corepack`, so `corepack enable` only
-  works with older versions.
-- **git**, the first time only, to download Vencord's source code.
-- On Linux, `tar` and `bzip2` (almost every distribution has them).
-- About 150 MB for the speech model and engine (per Vesktop install) and 300 MB for Vencord's source code.
-
-Windows on Arm isn't supported: the speech engine has no build for it.
+(up to v18 it was called NowCaptionDiscord; updating keeps whether it's turned on and your appearance settings).
+Status: tested in real calls on Linux (normal and Flathub Vesktop) and Windows 11; see `docs/PLATFORM_SUPPORT.md`.
 
 ## Install
 
-1. **Quit Vesktop completely**, including its tray icon. If you use Flathub's Vesktop and have never started it,
-   start it once and quit it first.
-2. Download this repository and open a terminal in its folder:
+You need **Vesktop** (from [vesktop.dev](https://vesktop.dev/install), Flathub or your package manager) and an
+internet connection. Nothing else has to be installed first.
 
-   ```sh
-   git clone https://github.com/Techlm77/NowCaption-Plugin.git
-   cd NowCaption-Plugin
-   ```
+1. **Download** this project: **Code → Download ZIP**, and unpack it (Windows: right-click the ZIP →
+   **Extract All…**; macOS: double-click the ZIP).
+2. **Double-click the installer** for your computer in the unpacked folder:
 
-   (Or use **Code → Download ZIP** on GitHub and unpack it.)
-3. Install the speech model and engine (downloads about 106 MiB, checked against a fixed SHA-256):
+   | Windows | macOS | Linux |
+   |---|---|---|
+   | **Install on Windows** (`Install on Windows.cmd`) | **Install on Mac** (`Install on Mac.command`) | **Install on Linux** (`Install on Linux.sh`) |
 
-   | Windows | macOS and Linux |
-   |---|---|
-   | `install-engine.cmd` | `./install-engine.sh` |
+3. Wait for **"NowCaption is installed"**. Vesktop opens with NowCaption turned on: join a voice call and click
+   **CC · Captions** at the top right.
 
-4. Download Vencord's source code, add NowCaption to it, build it and point Vesktop at the build:
+The first installation downloads about 300 MB and takes a few minutes. To **update**, run the installer again.
 
-   | Windows | macOS and Linux |
-   |---|---|
-   | `update-plugin.cmd --setup-vencord` | `./update-plugin.sh --setup-vencord` |
+**The first time you open the installer**, your computer may ask whether to trust it:
 
-   Vencord's source goes to `Documents/Vencord-source` in your home folder. Use `--vencord <folder>` to choose
-   another folder, or to use a Vencord source folder you already have.
-5. Start Vesktop. In **Settings → Vencord → Plugins**, turn on **NowCaption** (restart Vesktop if it asks).
+- **Windows**: "The publisher could not be verified": click **Run**. (If you see "Windows protected your PC",
+  click **More info → Run anyway**.)
+- **macOS**: "“Install on Mac.command” Not Opened": click **Done**, open **System Settings → Privacy & Security**,
+  scroll down and click **Open Anyway** next to the installer's name, then **Open**.
+- **Linux**: if double-clicking opens the file in an editor, right-click it and choose **Run as a Program** (or run
+  `./"Install on Linux.sh"` in a terminal).
 
-Both scripts find every Vesktop on your computer: the normal one, Flathub's, or both, and on Windows also Scoop's.
-For the **portable Vesktop** (the Windows .zip download), tell `update-plugin` where it is:
-`update-plugin.cmd --vesktop-data "<the folder that has Vesktop.exe>"`. If no Vesktop could be set up, `update-plugin`
-ends with **NOT FINISHED** and says what to do.
+### What the installer does
 
-### Flathub's Vesktop
+1. Looks for Vesktop: the normal one, Flathub's (`dev.vencord.Vesktop`), or both, and on Windows also Scoop's and
+   a portable Vesktop that is open. If there's none, it says so and offers to open Vesktop's download page. (Vencord
+   in the Discord app isn't enough: NowCaption needs Vesktop, which can import your Vencord settings on its first start.)
+2. Asks to close Vesktop if it's open.
+3. Gets its own copy of Node.js (checked against a fixed SHA-256) and the speech model v4 and engine (also checked).
+   These stay in NowCaption's folder: no admin rights are needed and nothing is installed system-wide.
+4. Downloads Vencord's source code (git isn't needed), adds NowCaption to it and builds it, then sets Vesktop to load
+   that build. Vesktop's previous setting is saved next to it (`state.json.nowcaption-backup-…`).
+5. Turns NowCaption on in Vencord's settings, shows "NowCaption is installed" and starts Vesktop again.
 
-Nothing extra is needed, and Vesktop needs no added permissions. Flathub's Vesktop can only read its own folder,
-so the scripts put everything there:
+Everything it prints is also saved to a log file (your home folder is shown as `~`, so it can be shared when asking
+for help). Where things go:
 
-- the speech model and engine go in `~/.var/app/dev.vencord.Vesktop/data/nowcaption-vesktop`;
-- a copy of the Vencord build goes in `…/nowcaption-vesktop/vencord-dist`, and Vesktop's Vencord location is set to it.
+| | Windows | macOS | Linux |
+|---|---|---|---|
+| Speech model, engine, tools, logs | `%LOCALAPPDATA%\NowCaption-Vesktop` | `~/Library/Application Support/NowCaption-Vesktop` | `~/.local/share/nowcaption-vesktop` |
+| Vencord's source and build | `Documents\Vencord-source` | `~/Documents/Vencord-source` | `~/Documents/Vencord-source` |
+| Backups of earlier versions | `Documents\NowCaption-Vesktop-Backups` | same | same |
 
-Run `update-plugin` again after any change, so the copy stays current. To set up only one of the two, use
-`install-engine --target native` or `--target flatpak`.
+Flathub's Vesktop can only read its own folder, so it gets its own copy of the model, engine and build in
+`~/.var/app/dev.vencord.Vesktop/data/nowcaption-vesktop`. It needs no extra permissions.
+
+Windows on Arm isn't supported (the speech engine has no build for it). macOS needs 13.5 (Ventura) or newer.
+
+### From the command line
+
+The same steps without the installer, for people who prefer them (needs Node.js 22 or newer; pnpm and git are used
+when installed and fetched or skipped when not):
+
+| | Windows | macOS and Linux |
+|---|---|---|
+| The whole installer | `node scripts\setup.mjs` | `node scripts/setup.mjs` |
+| Only the speech model and engine | `command-line\install-engine.cmd` | `command-line/install-engine.sh` |
+| Only build and set up the plugin | `command-line\update-plugin.cmd --setup-vencord` | `command-line/update-plugin.sh --setup-vencord` |
+| Check the installation (changes nothing) | `node scripts\doctor.mjs` | `node scripts/doctor.mjs` |
+
+`update-plugin` options: `--vencord <folder>` for another Vencord source folder, `--vesktop-data <folder>` for a
+portable Vesktop (the folder that has `Vesktop.exe`), `--keep-old-models`, `--preflight` (changes nothing). It backs
+up the previous plugin and build to `Documents/NowCaption-Vesktop-Backups` and restores them if the build fails. If no
+Vesktop could be set up, it ends with **NOT FINISHED** and says what to do. `install-engine --target native|flatpak`
+installs for one kind of Vesktop only.
 
 ## Using captions
 
@@ -87,26 +100,21 @@ If Discord hasn't confirmed who a track belongs to, you can click **Place on par
 person's tile. Placement you set by hand is dropped again if the tile starts showing someone else or people join
 or leave. That way captions never stay on the wrong person.
 
-## Updating
-
-Quit Vesktop and run `update-plugin` again (without `--setup-vencord`). It backs up the previous plugin and build
-to `Documents/NowCaption-Vesktop-Backups` and restores them if the build fails. Run `install-engine` again only
-when a new speech model is announced. Once an update has succeeded, `update-plugin` removes older speech models
-(`--keep-old-models` keeps them).
-
 ## Troubleshooting
 
-Run `node scripts/doctor.mjs`. It changes nothing and reports each Vesktop it finds, where that Vesktop loads
-Vencord from, and whether the model and engine are installed for it and load.
+The installer's last lines say what went wrong and where its log is. `node scripts/doctor.mjs` changes nothing and
+reports each Vesktop it finds, where that Vesktop loads Vencord from, and whether the model and engine load.
 
-- **NowCaption isn't in Vencord's plugin list**: Vesktop is loading its own Vencord, not the one built with
-  NowCaption. Run `node scripts/doctor.mjs` with Vesktop open: on Windows it shows which `Vesktop.exe` is running and,
-  for a portable one, the exact `update-plugin` command. Quit Vesktop, run that, and start it again.
-- **"Speech model v4 isn't installed"**: run `install-engine` (for Flathub's Vesktop: `install-engine --target flatpak`).
-- **"Vesktop is running"**: quit it from the tray icon too, or wait a few seconds after closing it.
+- **"Vesktop isn't installed"**: install it from [vesktop.dev](https://vesktop.dev/install) and run the installer
+  again. For a portable Vesktop (the Windows .zip), start it first: the installer finds it while it's open.
+- **NowCaption isn't in Vencord's plugin list**: that Vesktop loads its own Vencord, not the one built with
+  NowCaption. Run the installer again (with a portable Vesktop open, so it's found).
+- **NowCaption is listed but off**: turn it on in **Settings → Vencord → Plugins** (with Vencord's cloud settings
+  sync, the cloud copy can replace the installer's setting).
+- **"Vesktop didn't close"**: quit it from its tray icon and run the installer again.
 - **Captions never start in a call**: a Discord update may have moved its voice code. In Vesktop's developer tools
   (Ctrl+Shift+I, or Cmd+Option+I on a Mac), run `window.__nowCaption.enableLegacyCapture()` and rejoin the call.
-- **On Linux, "bzip2: Cannot exec"**: install your distribution's `bzip2` package and run `install-engine` again.
+- **On Linux, "bzip2: Cannot exec"**: install your distribution's `bzip2` package and run the installer again.
 - **A folder name containing `%` or `"` on Windows**: the scripts refuse these, because the Windows command prompt
   changes them. Use `--vencord` with another folder, or set `NOWCAPTION_VESKTOP_HOME` for the engine.
 
@@ -125,7 +133,7 @@ a report that contains timings and counts only: no audio, captions, names or Dis
 
 1. In Vesktop, **Settings → Vesktop Settings → Vencord Location**: switch back to Vesktop's own Vencord. Or
    restore the `state.json.nowcaption-backup-…` file that `update-plugin` saved next to Vesktop's `state.json`.
-2. Delete the speech runtime folder:
+2. Delete NowCaption's folder (speech model, engine, the installer's tools and logs):
 
    | | Folder |
    |---|---|

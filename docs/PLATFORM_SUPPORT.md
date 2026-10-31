@@ -42,7 +42,8 @@ for Windows `tar` on the PATH would misread `C:\` paths).
 
 | | Windows | macOS and Linux |
 |---|---|---|
-| Install the model and engine | `install-engine.cmd` | `./install-engine.sh` |
-| Install or update the plugin | `update-plugin.cmd` | `./update-plugin.sh` |
+| Install everything (double-click) | `Install on Windows.cmd` | `Install on Mac.command`, `Install on Linux.sh` |
+| Install the model and engine | `command-line\install-engine.cmd` | `command-line/install-engine.sh` |
+| Install or update the plugin | `command-line\update-plugin.cmd` | `command-line/update-plugin.sh` |
 | Check the installation (read-only) | `node scripts\doctor.mjs` | `node scripts/doctor.mjs` |
-| Show what would happen | `install-engine.cmd --dry-run`, `update-plugin.cmd --preflight` | same with `./…sh` |
+| Show what would happen | `command-line\install-engine.cmd --dry-run`, `command-line\update-plugin.cmd --preflight` | same with `command-line/…sh` |

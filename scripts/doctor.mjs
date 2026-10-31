@@ -73,7 +73,7 @@ async function main() {
     for (const { exe, portable } of runningVesktopExecutables()) {
         print(`\nRunning now: ${exe}`);
         if (portable) print(`  This is a portable Vesktop: its settings are in ${join(dirname(exe), "Data")}.\n` +
-            `  Set it up with: update-plugin.cmd --vesktop-data "${dirname(exe)}" (quit Vesktop first)`);
+            `  Set it up: start "Install on Windows.cmd" while this Vesktop is open, or run command-line\\update-plugin.cmd --vesktop-data "${dirname(exe)}" (quit Vesktop first)`);
     }
     print("\nNot checked here: live Discord audio, speaker identification and font rendering (see the diagnostics tab in Vesktop).");
 }

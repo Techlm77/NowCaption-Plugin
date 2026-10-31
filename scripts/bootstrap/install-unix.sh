@@ -19,6 +19,13 @@ case "$(uname -s)" in
     Darwin)
         os=darwin
         base="$HOME/Library/Application Support/NowCaption-Vesktop"
+        # Node.js 26 (used to build Vencord) needs macOS 13.5 Ventura or newer.
+        IFS=. read -r major minor _ <<EOF_VERSION
+$(sw_vers -productVersion)
+EOF_VERSION
+        if [ "${major:-0}" -lt 13 ] || { [ "$major" -eq 13 ] && [ "${minor:-0}" -lt 5 ]; }; then
+            fail "NowCaption's installer needs macOS 13.5 (Ventura) or newer; this Mac has $(sw_vers -productVersion)."
+        fi
         # Apple Silicon reports x86_64 when this runs under Rosetta: use the native build anyway.
         if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ]; then arch=arm64; else arch=x64; fi
         ;;

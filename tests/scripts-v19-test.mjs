@@ -100,8 +100,8 @@ try {
 
     // Script arguments.
     const here = fileURLToPath(new URL("..", import.meta.url));
-    // The README runs ./install-engine.sh and ./update-plugin.sh: both must be executable.
-    if (process.platform !== "win32") for (const f of ["install-engine.sh", "update-plugin.sh"]) {
+    // The README runs command-line/install-engine.sh and command-line/update-plugin.sh: both must be executable.
+    if (process.platform !== "win32") for (const f of ["command-line/install-engine.sh", "command-line/update-plugin.sh"]) {
         assert.ok((await stat(join(here, f))).mode & 0o100, `${f} is executable`);
     }
     const node = (script, args, env = {}) => spawnSync(process.execPath, [join(here, "scripts", script), ...args],

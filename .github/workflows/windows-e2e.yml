@@ -48,18 +48,18 @@ jobs:
           "VESKTOP_EXE=$exe" >> $env:GITHUB_ENV
           "VESKTOP_FOLDER=$(Split-Path $exe)" >> $env:GITHUB_ENV
       - name: Install speech model v4 and the engine (install-engine.cmd)
-        run: .\install-engine.cmd
+        run: .\command-line\install-engine.cmd
       - name: Build Vencord with NowCaption and set up Vesktop (update-plugin.cmd)
         timeout-minutes: 15
         run: |
           if ("${{ matrix.install }}" -eq "portable") {
             # Not found where Vesktop is usually installed: the updater must say so instead of claiming success.
-            $out = cmd /c ".\update-plugin.cmd --setup-vencord 2>&1"; $code = $LASTEXITCODE
+            $out = cmd /c ".\command-line\update-plugin.cmd --setup-vencord 2>&1"; $code = $LASTEXITCODE
             $out
             if ($code -eq 0 -or -not ($out -match "NOT FINISHED")) { throw "update-plugin should have said NOT FINISHED" }
-            .\update-plugin.cmd --vesktop-data "$env:VESKTOP_FOLDER"
+            .\command-line\update-plugin.cmd --vesktop-data "$env:VESKTOP_FOLDER"
           } else {
-            .\update-plugin.cmd --setup-vencord
+            .\command-line\update-plugin.cmd --setup-vencord
           }
           if ($LASTEXITCODE -ne 0) { throw "update-plugin failed" }
       - name: Doctor report
