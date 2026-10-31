@@ -1,15 +1,17 @@
 # Platform support
 
-Needs Node.js 20+, npm, pnpm, git (first install), a Vencord **source** folder (the installer can download it), and
-`tar` with bzip2 (Windows 10 and 11 include one; on Linux install `bzip2` if it's missing). Quit Vesktop before
-running `update-plugin`. The engine is `sherpa-onnx-node@1.13.8`; the model is checked against its SHA-256.
+The double-click installers need only Vesktop and an internet connection: they bring their own Node.js 26.13.0
+(SHA-256 pinned per system), download Vencord's source as a GitHub archive and install the pnpm version Vencord asks
+for, all into NowCaption's folder. Linux also needs `tar` with `bzip2` and the `libatomic` library (desktop systems
+have both; the installer says how to add them). The command-line scripts need Node.js 22+ (Vencord's minimum); git
+and pnpm are used when installed. The engine is `sherpa-onnx-node@1.13.8`; the model is checked against its SHA-256.
 
 | System | Speech runtime folder | Vesktop's settings (`state.json`) | Status |
 |---|---|---|---|
-| Linux x64 / arm64 | `$XDG_DATA_HOME/nowcaption-vesktop` or `~/.local/share/nowcaption-vesktop` | `~/.config/vesktop` | Tested: installer, build, real Vesktop 1.6.5 (headless), real engine |
+| Linux x64 / arm64 | `$XDG_DATA_HOME/nowcaption-vesktop` or `~/.local/share/nowcaption-vesktop` | `~/.config/vesktop` | Tested: live calls; double-click installer in Ubuntu 24.04 with a never-opened Vesktop 1.6.5 (headless), real engine |
 | Flathub's Vesktop (`dev.vencord.Vesktop`) | `~/.var/app/dev.vencord.Vesktop/data/nowcaption-vesktop` | `~/.var/app/dev.vencord.Vesktop/config/vesktop` | Tested: engine inside the Freedesktop 25.08 and 26.08 runtimes; Vesktop 1.6.5 in the same environment (headless) |
-| macOS (Apple Silicon and Intel) | `~/Library/Application Support/NowCaption-Vesktop` | `~/Library/Application Support/vesktop` | Not yet tested on a Mac; the CI workflow installs and runs the real engine on macOS once the project is on GitHub |
-| Windows x64 | `%LOCALAPPDATA%\NowCaption-Vesktop` | `%APPDATA%\vesktop` | Not yet tested on a PC; the CI workflow installs and runs the real engine on Windows once the project is on GitHub |
+| macOS 13.5+ (Apple Silicon and Intel) | `~/Library/Application Support/NowCaption-Vesktop` (also Vencord's source and the backups) | `~/Library/Application Support/vesktop` | Tested on Intel macOS 15.8 (VM): double-click installer, live call with two speakers. Apple Silicon not run (same universal Vesktop, arm64 engine build installed too) |
+| Windows 10/11 x64 | `%LOCALAPPDATA%\NowCaption-Vesktop` | `%APPDATA%\vesktop` | Tested on Windows 11 26H2: double-click installer (first install and update, no admin rights), live call |
 | Windows on Arm | — | — | Not supported (no engine build) |
 
 `NOWCAPTION_VESKTOP_HOME` overrides the runtime folder for a normal (non-Flatpak) Vesktop; `VENCORD_USER_DATA_DIR`

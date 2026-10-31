@@ -1,10 +1,34 @@
-## Unreleased — Windows and macOS checked on real systems
+## Unreleased — double-click installer; Windows and macOS checked on real systems
 
-**Windows** (Windows 11 26H2, fresh install, normal user without admin rights, Vesktop 1.6.8 from its installer)
-- The README steps work as written: `install-engine.cmd`, `update-plugin.cmd --setup-vencord`, NowCaption in the
-  plugin list, and live captions in a real Discord call with the speaker verified by Discord.
-- pnpm: the README now says `npm install -g pnpm`. Node.js 25 and newer (26 is the current LTS) no longer include
-  `corepack`, so `corepack enable` failed with "not recognized".
+**Installer**
+- Download the ZIP, unpack it and double-click **Install on Windows**, **Install on Mac** or **Install on Linux**.
+  Nothing has to be installed first: the installer gets its own Node.js (pinned, SHA-256 checked, kept in NowCaption's
+  folder, no admin rights), downloads Vencord's source without git and the pnpm version Vencord asks for.
+- It looks for Vesktop first (and says when only the Discord app, maybe with Vencord, is there), offers to close a
+  running Vesktop, sets up a Vesktop that was never opened, turns NowCaption on (v18 settings are kept), says
+  "NowCaption is installed" in a message box and starts Vesktop again. Running it again updates. It keeps a log with
+  the home folder shown as `~`.
+- On Linux it says what to install when `bzip2` or `libatomic` is missing; on a Mac it checks for macOS 13.5+.
+- The command-line scripts moved to `command-line/`. `update-plugin` no longer needs git or pnpm installed.
+
+**Tested on real systems** (fresh installs, Vesktop 1.6.8, the ZIP downloaded and unpacked the normal way)
+- Windows 11 26H2, normal user without admin rights: first install and update with the double-click installer;
+  NowCaption in the plugin list, real speech inside Vesktop, live captions in a Discord call (speaker verified by
+  Discord, 3.3 ms per 40 ms of audio, nothing dropped).
+- macOS 15.8 (Intel, in a VM): the installer after Gatekeeper's "Open Anyway"; NowCaption in the plugin list, real
+  speech inside Vesktop, live captions for two speakers at once (3.1 ms per 40 ms, nothing dropped). Apple Silicon is
+  covered by the same universal Vesktop and the arm64 engine build, but wasn't run.
+- Linux (Ubuntu 24.04 container, Vesktop 1.6.5 never opened before): installer, Vesktop's first start keeps the
+  NowCaption build and the plugin turned on, real speech inside Vesktop.
+
+**Fixed while testing**
+- pnpm: Node.js 25 and newer (26 is the current LTS) no longer include `corepack`, so `corepack enable` failed with
+  "not recognized". pnpm 12's own launcher needs its install script, which npm 11 skips: the installer starts pnpm's
+  JavaScript entry point instead.
+- macOS: Vencord's source and the backups are kept out of Documents (Terminal and then Vesktop asked for access, and
+  Vesktop hung on that prompt; with "Don't Allow" it couldn't load NowCaption). `git --version` is no longer run when
+  only Apple's git stub is there (it opened the "install developer tools?" dialog).
+- Settings files with a UTF-8 byte-order mark are read correctly.
 
 ## v19 — Speech model v4, four speakers, long calls, Windows/macOS/Flatpak installers
 
