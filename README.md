@@ -15,7 +15,8 @@ same model and a speech engine for Vesktop.
 
 This is a Vencord userplugin, not an official Vencord plugin. It's called **NowCaption** in Vesktop's plugin list
 (up to v18 it was called NowCaptionDiscord; updating keeps whether it's turned on and your appearance settings).
-Status: tested in real calls on Linux (normal and Flathub Vesktop) and Windows 11; see `docs/PLATFORM_SUPPORT.md`.
+Status: tested in real calls on Linux (normal and Flathub Vesktop), Windows 11 and macOS 15 (Intel); see
+`docs/PLATFORM_SUPPORT.md`.
 
 ## Install
 
